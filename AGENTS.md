@@ -1,6 +1,6 @@
 # pi-aidan
 
-A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan, with skills and two prompts injected as hidden user messages.
+A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan.
 
 ## Layout
 

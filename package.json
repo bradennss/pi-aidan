@@ -2,7 +2,7 @@
   "name": "pi-aidan",
   "version": "0.1.0",
   "private": true,
-  "description": "Pi extension that turns Pi into a coding agent named Aidan, with skills and injected rule prompts.",
+  "description": "Pi extension that turns Pi into a coding agent named Aidan.",
   "type": "module",
   "exports": {
     ".": {
