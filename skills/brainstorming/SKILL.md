@@ -21,7 +21,7 @@ A handful of reads is enough. You're hunting for the constraints that turn the v
 
 ## Asking well
 
-Ask in small rounds, roughly three questions at a time, and keep going until you could write the spec without guessing. Use `questionnaire` when there is more than one, `question` for a single fork. Each round should be narrower than the last; if round four is still as broad as round one, you are missing something in the code, so go read it.
+Ask in small rounds, roughly three questions at a time, and keep going until you could write the spec without guessing. Each round should be narrower than the last; if round four is still as broad as round one, you are missing something in the code, so go read it.
 
 Every question carries concrete options and a default you recommend, so the cheapest reply is "yeah, the default". Phrase it as a veto: "I'll store it in the existing `config.json` unless you want a separate file."
 
