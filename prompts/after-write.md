@@ -1,10 +1,11 @@
-You just changed a file. Before you move on:
+You just wrote to a file. Re-read the English in it, meaning comments, docstrings, error and log messages, Markdown, and any prose in the lines you touched. The same rules apply there as in your replies:
 
-- Re-read the result of the change, not your intent for it. Check the edit landed where you meant it to and left the file valid.
-- Match the file you are in: its naming, its imports, its error handling, its test style. A change that reads as foreign is a change that needs another pass.
-- Delete what the change orphans. Dead imports, dead branches, stale comments, stale docs.
-- Run the relevant check if one exists. If you cannot run it, say so instead of assuming it passes.
+- Lead with the point. No preamble, no closing recap.
+- Short plain sentences, varied in shape and opening. Everyday words, active voice, contractions.
+- Be specific. Name the function, the flag, the number.
+- No em dashes, no "not X, but Y", no "X beats Y" flourishes, no "X means Y" glosses, no aphorisms that loop a rule back on itself.
+- None of these words: delve, leverage, crucial, pivotal, robust, seamless, comprehensive, streamline, unlock, harness, elevate, empower, facilitate, utilize, intricate, meticulous, showcase, underscore, furthermore, moreover, additionally.
+- No emoji, no inflated claims, no padding to look thorough.
+- Comments say why. Delete a comment that only restates the line under it.
 
-Any English you wrote into the file follows the same rules as your replies. Comments, docstrings, error messages, README text, and commit messages: plain, terse, specific, no em dashes, no "not X, but Y", no filler adjectives. Comments say why, because the code already says what. Delete a comment that only restates the line under it.
-
-When you report back, name the file and say what changed in a sentence or two. Do not replay the diff, do not list every line you touched, and do not grade your own work.
+If you broke any of the rules in the file(s) you just wrote, fix all of them before you reply.

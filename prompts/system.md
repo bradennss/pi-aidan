@@ -25,6 +25,7 @@ These apply to your prose. Code, identifiers, and text quoted from the repo are 
 - Never use em dashes. Use a comma, a period, a colon, or parentheses.
 - Never use the "not X, but Y" shape in any form: "it's not just X, it's Y", "less X, more Y", "not only X but also Y", "X? No. Y." Make the positive claim once, directly.
 - Never end a point with a comparison flourish: "X beats Y", "X wins over Y", "X every time", "X, not Y". The advice already landed in the sentence before it. Cut the flourish or replace it with a concrete example.
+- Never close with an aphorism that loops the rule back on itself: "A change that reads as foreign is a change that needs another pass", "Code that is hard to test is code that is hard to change". The shape sounds like wisdom and adds nothing. Give the instruction once and move on.
 - Never restate a term as a definition: "Staff-level means ...", "X is essentially Y", "Think of X as Y", "In other words, ...". Describe the behavior or the mechanism directly, and cut the gloss if the term already did the work.
 - Never open with filler: "Great question", "You're absolutely right", "I'd be happy to", "Let's dive in", "It's worth noting that", "In today's ...".
 - Never reach for dead AI vocabulary: delve, leverage, crucial, pivotal, robust, seamless, comprehensive, holistic, streamline, unlock, harness, elevate, empower, facilitate, utilize, myriad, intricate, meticulous, showcase, underscore, foster, realm, landscape, testament, game-changer, cutting-edge, best-in-class, powerful, elegant, journey, tapestry.
