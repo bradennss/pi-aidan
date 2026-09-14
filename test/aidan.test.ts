@@ -2,17 +2,19 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type {
+  BeforeAgentStartEvent,
   ContextEvent,
   ExtensionAPI,
   ExtensionContext,
-  ExtensionHandler,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import aidan, { PROMPTS_DIR } from "../index.ts";
 import {
   AFTER_WRITE_PROMPT_FILE,
-  createContextHandler,
+  type AidanHandlers,
+  createHandlers,
   RULES_PROMPT_FILE,
+  SYSTEM_PROMPT_FILE,
 } from "../src/inject.ts";
 import type { AgentMessage } from "../src/messages.ts";
 
@@ -46,7 +48,7 @@ function contents(result: ContextEventResult | undefined): string[] {
 }
 
 describe("aidan", () => {
-  it("registers a context handler for the bundled prompts", () => {
+  it("registers both handlers for the bundled prompts", () => {
     const events: string[] = [];
     const pi = {
       on: (event: string) => {
@@ -56,19 +58,20 @@ describe("aidan", () => {
 
     aidan(pi);
 
-    expect(events).toEqual(["context"]);
+    expect(events).toEqual(["before_agent_start", "context"]);
     expect(PROMPTS_DIR.endsWith(path.join("pi-aidan", "prompts"))).toBe(true);
   });
 });
 
-describe("createContextHandler", () => {
+describe("createHandlers", () => {
   let promptsDir: string;
   let warnings: string[];
   let ctx: ExtensionContext;
-  let handler: ExtensionHandler<ContextEvent, ContextEventResult>;
+  let handlers: AidanHandlers;
 
   beforeEach(() => {
     promptsDir = mkdtempSync(path.join(tmpdir(), "pi-aidan-"));
+    writeFileSync(path.join(promptsDir, SYSTEM_PROMPT_FILE), "");
     writeFileSync(path.join(promptsDir, RULES_PROMPT_FILE), "");
     writeFileSync(path.join(promptsDir, AFTER_WRITE_PROMPT_FILE), "");
     warnings = [];
@@ -79,7 +82,7 @@ describe("createContextHandler", () => {
         },
       },
     } as unknown as ExtensionContext;
-    handler = createContextHandler(promptsDir);
+    handlers = createHandlers(promptsDir);
   });
 
   afterEach(() => {
@@ -93,8 +96,42 @@ describe("createContextHandler", () => {
   async function run(
     messages: AgentMessage[],
   ): Promise<ContextEventResult | undefined> {
-    return (await handler({ type: "context", messages }, ctx)) ?? undefined;
+    return (
+      (await handlers.context({ type: "context", messages }, ctx)) ?? undefined
+    );
   }
+
+  async function startAgent(systemPrompt: string): Promise<string | undefined> {
+    const event = {
+      type: "before_agent_start",
+      prompt: "hello",
+      systemPrompt,
+      systemPromptOptions: { cwd: promptsDir, contextFiles: [] },
+    } as unknown as BeforeAgentStartEvent;
+    const result = await handlers.beforeAgentStart(event, ctx);
+    return result?.systemPrompt;
+  }
+
+  it("appends the system prompt file to Pi's system prompt", async () => {
+    writePrompt(SYSTEM_PROMPT_FILE, "You are Aidan.");
+
+    expect(await startAgent("You are a coding assistant.")).toBe(
+      "You are a coding assistant.\n\n<EXTREMELY_IMPORTANT>\n\nYou are Aidan.\n\n</EXTREMELY_IMPORTANT>",
+    );
+  });
+
+  it("reads the system prompt file again for every turn", async () => {
+    writePrompt(SYSTEM_PROMPT_FILE, "First.");
+    await startAgent("Base.");
+
+    writePrompt(SYSTEM_PROMPT_FILE, "Second.");
+
+    expect(await startAgent("Base.")).toContain("Second.");
+  });
+
+  it("leaves the system prompt alone while its file is empty", async () => {
+    expect(await startAgent("Base.")).toBeUndefined();
+  });
 
   it("puts the rules in front of the newest user message", async () => {
     writePrompt(RULES_PROMPT_FILE, "Reply in lowercase.");

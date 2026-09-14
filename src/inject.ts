@@ -1,5 +1,7 @@
 import path from "node:path";
 import type {
+  BeforeAgentStartEvent,
+  BeforeAgentStartEventResult,
   ContextEvent,
   ExtensionContext,
   ExtensionHandler,
@@ -16,6 +18,7 @@ import {
 } from "./messages.ts";
 import { readPromptFile } from "./prompt-file.ts";
 
+export const SYSTEM_PROMPT_FILE = "system.md";
 export const RULES_PROMPT_FILE = "rules.md";
 export const AFTER_WRITE_PROMPT_FILE = "after-write.md";
 
@@ -23,9 +26,15 @@ interface ContextEventResult {
   messages?: ContextEvent["messages"];
 }
 
-export function createContextHandler(
-  promptsDir: string,
-): ExtensionHandler<ContextEvent, ContextEventResult> {
+export interface AidanHandlers {
+  beforeAgentStart: ExtensionHandler<
+    BeforeAgentStartEvent,
+    BeforeAgentStartEventResult
+  >;
+  context: ExtensionHandler<ContextEvent, ContextEventResult>;
+}
+
+export function createHandlers(promptsDir: string): AidanHandlers {
   const warned = new Set<string>();
 
   async function loadBlock(
@@ -45,25 +54,35 @@ export function createContextHandler(
     return content === "" ? undefined : wrapInBlock(tag, content);
   }
 
-  return async (event, ctx) => {
-    const rules = await loadBlock(RULES_PROMPT_FILE, RULES_TAG, ctx);
-    const reminder = endsWithFileMutation(event.messages)
-      ? await loadBlock(AFTER_WRITE_PROMPT_FILE, REMINDER_TAG, ctx)
-      : undefined;
-    if (rules === undefined && reminder === undefined) {
-      return undefined;
-    }
+  return {
+    beforeAgentStart: async (event, ctx) => {
+      const system = await loadBlock(SYSTEM_PROMPT_FILE, RULES_TAG, ctx);
+      if (system === undefined) {
+        return undefined;
+      }
+      return { systemPrompt: `${event.systemPrompt}\n\n${system}` };
+    },
 
-    let messages = event.messages;
-    if (rules !== undefined) {
-      messages = insertBeforeLastUserMessage(
-        messages,
-        buildMessage(RULES_MESSAGE_TYPE, rules),
-      );
-    }
-    if (reminder !== undefined) {
-      messages = [...messages, buildMessage(REMINDER_MESSAGE_TYPE, reminder)];
-    }
-    return { messages };
+    context: async (event, ctx) => {
+      const rules = await loadBlock(RULES_PROMPT_FILE, RULES_TAG, ctx);
+      const reminder = endsWithFileMutation(event.messages)
+        ? await loadBlock(AFTER_WRITE_PROMPT_FILE, REMINDER_TAG, ctx)
+        : undefined;
+      if (rules === undefined && reminder === undefined) {
+        return undefined;
+      }
+
+      let messages = event.messages;
+      if (rules !== undefined) {
+        messages = insertBeforeLastUserMessage(
+          messages,
+          buildMessage(RULES_MESSAGE_TYPE, rules),
+        );
+      }
+      if (reminder !== undefined) {
+        messages = [...messages, buildMessage(REMINDER_MESSAGE_TYPE, reminder)];
+      }
+      return { messages };
+    },
   };
 }

@@ -4,10 +4,10 @@ A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan.
 
 ## Layout
 
-- `index.ts` registers the `context` handler against the bundled `prompts/` directory.
-- `src/inject.ts` reads the prompt files and places the injected messages.
+- `index.ts` registers the `before_agent_start` and `context` handlers against the bundled `prompts/` directory.
+- `src/inject.ts` reads the prompt files, appends to the system prompt, and places the injected messages.
 - `src/messages.ts` builds the injected messages and finds trailing `write`/`edit` tool results.
-- `prompts/rules.md` and `prompts/after-write.md` are prompt content, edited by hand. Leave their wording alone unless asked.
+- `prompts/system.md`, `prompts/rules.md`, and `prompts/after-write.md` are prompt content, edited by hand. Leave their wording alone unless asked.
 - `skills/` holds skill folders, each with a `SKILL.md`.
 
 Prettier formats the Markdown in `prompts/` and `skills/` too, so run it after editing a prompt or a skill.
