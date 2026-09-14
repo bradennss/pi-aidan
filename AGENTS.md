@@ -10,7 +10,7 @@ A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan, 
 - `prompts/rules.md` and `prompts/after-write.md` are prompt content, edited by hand. Leave their wording alone unless asked.
 - `skills/` holds skill folders, each with a `SKILL.md`.
 
-Prompt and skill files are not formatted or linted. Prettier ignores `prompts/` and `skills/`.
+Prettier formats the Markdown in `prompts/` and `skills/` too, so run it after editing a prompt or a skill.
 
 ## Verifying changes
 
