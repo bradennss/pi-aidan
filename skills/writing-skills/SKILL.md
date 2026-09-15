@@ -10,9 +10,9 @@ Create the smallest skill that fixes an observed gap. Keep instructions specific
 ## Workflow
 
 1. Inspect the target repository, its skill discovery paths, and nearby skills. Preserve local conventions and stop on conflicting files.
-2. Define at least three representative evaluations before writing extensive instructions. Record each task, the baseline failure or missing context, and verifiable success criteria. Include normal use, an edge case, and skill discovery or routing when relevant.
+2. Define at least three representative evaluations before writing extensive instructions. Record each task, the baseline failure or missing context, and verifiable success criteria in session notes, a temporary artifact outside the skill, or the repository's existing evaluation harness. Include normal use, an edge case, and skill discovery or routing when relevant. Do not add evaluation plans or results to the skill package unless the repository convention or user explicitly requires them.
 3. Choose the degree of freedom for each operation. Use heuristics for context-dependent work, pseudocode or parameterized scripts when a preferred pattern allows variation, and exact commands for fragile or order-dependent work.
-4. Create the skill directory and `SKILL.md`. Add only the optional files required by the evaluations.
+4. Create the skill directory and `SKILL.md`. Add only optional files that agents need when using the skill.
 5. Write the metadata first, then the shortest workflow that addresses the observed failures. Add examples, templates, edge cases, and validation only where they change agent behavior.
 6. Validate the package and run the evaluations in fresh sessions with every model family the skill must support. Fix failures, rerun the affected evaluations, then rerun the full set.
 7. Review how agents navigate the skill. Promote repeatedly needed content into `SKILL.md`, make missed references more explicit, and remove files or instructions that agents do not use.
@@ -80,6 +80,6 @@ Test these separately:
 - **Execution:** the agent follows required steps, loads the right references, handles edge cases, and produces the requested result.
 - **Verification:** scripts and checks catch invalid output with messages that tell the agent how to repair it.
 
-Run evaluations with fresh agent context so earlier instructions do not hide gaps. Test every intended model class, since smaller models may need clearer guidance while larger models may be hindered by extra explanation. Base revisions on observed failures and navigation paths rather than imagined future needs.
+Run evaluations with fresh agent context so earlier instructions do not hide gaps. Keep definitions, transcripts, and results outside the skill package by default; package them only when they are part of an established repository test suite. Test every intended model class, since smaller models may need clearer guidance while larger models may be hindered by extra explanation. Base revisions on observed failures and navigation paths rather than imagined future needs.
 
 Before finishing, validate the frontmatter, relative links, script dependencies, evaluation results, and line count. Report which models and scenarios were tested, along with anything left unchecked.
