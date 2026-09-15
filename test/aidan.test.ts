@@ -8,7 +8,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import aidan, { PROMPTS_DIR } from "../index.ts";
+import aidan from "../index.ts";
 import {
   AFTER_WRITE_PROMPT_FILE,
   type AidanHandlers,
@@ -59,7 +59,6 @@ describe("aidan", () => {
     aidan(pi);
 
     expect(events).toEqual(["before_agent_start", "context"]);
-    expect(PROMPTS_DIR.endsWith(path.join("pi-aidan", "prompts"))).toBe(true);
   });
 });
 

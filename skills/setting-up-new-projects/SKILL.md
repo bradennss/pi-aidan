@@ -5,17 +5,18 @@ description: Set up new software projects with current package and runtime tooli
 
 # Setting up new projects
 
-Build the smallest working project that meets the request. Leave it with one command that runs every required check.
+Build the smallest working project that meets the request. Leave it with one command that runs every required check. Use this skill directly for a new project outside an existing repository and skip environment setup.
 
 ## Workflow
 
-1. Confirm only decisions that change the scaffold: language, framework, package or module name, public interface or one-sentence behavior, package manager, deploy target, CI provider when requested, and whether the destination may be overwritten. Infer the rest from the request and nearby repositories. When CI is requested, use the provider that hosts the repository; ask if there is no remote or convention to identify it.
+1. Confirm only decisions that change the scaffold: language, framework, package or module name, public interface or one-sentence behavior, package manager, deploy target, CI provider when requested, initial Git branch when creating a repository, and whether the destination may be overwritten. Infer the rest from the request and nearby repositories. When CI is requested, use the provider that hosts the repository; ask if there is no remote or convention to identify it.
 2. Inspect the destination before writing. Preserve existing files and stop on conflicts instead of deleting or replacing them silently.
-3. Check official documentation when an initializer, config format, or tool option may have changed. Use the stable release available through the selected package or toolchain manager, and commit its lockfile.
-4. Run the ecosystem's official initializer when it produces the requested shape. Keep its useful defaults, remove demo code, and avoid optional dependencies without an immediate use.
-5. Add strict static checks, deterministic formatting, a small test, and scripts or task-runner targets for each check. Configure warnings to fail CI.
-6. Write `AGENTS.md` from the files and commands in this repository. Then create `CLAUDE.md` as a relative symlink to it.
-7. Run formatting, linting, type checking, tests, and a build when the project builds an artifact. Fix every failure, then rerun the full check command.
+3. Before creating project files, determine whether the canonical destination is already a Git repository. For a brand-new destination outside Git, create the destination directory, initialize Git there with the requested or stated conventional initial branch, and verify `git rev-parse --show-toplevel` equals the destination. For an existing repository being standardized, preserve its current Git topology and branch.
+4. Check official documentation when an initializer, config format, or tool option may have changed. Use the stable release available through the selected package or toolchain manager, and keep its lockfile.
+5. Run the ecosystem's official initializer when it produces the requested shape. Keep its useful defaults, remove demo code, and avoid optional dependencies without an immediate use.
+6. Add strict static checks, deterministic formatting, a small test, and scripts or task-runner targets for each check. Configure warnings to fail CI.
+7. Write `AGENTS.md` from the files and commands in this repository. Then create `CLAUDE.md` as a relative symlink to it.
+8. Run formatting, linting, type checking, tests, and a build when the project builds an artifact. Fix every failure, then rerun the full check command.
 
 ## Tooling baseline
 

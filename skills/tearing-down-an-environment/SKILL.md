@@ -1,41 +1,37 @@
 ---
 name: tearing-down-an-environment
-description: Tear down an isolated development environment created for a task or work session. Use when finishing work, removing a task worktree or dev stack, or cleaning up its ports, processes, containers, namespaces, and local data without affecting other environments.
+description: Tear down an isolated development environment created for a task or work session. Use when finishing work, removing a task worktree or development stack, or cleaning up its ports, processes, containers, namespaces, and local data.
 ---
 
 # Tearing down an environment
 
-Use the setup manifest as the authority for ownership. Remove only resources whose exact identity and ownership match it, and preserve all Git work unless removal is proven safe.
+Remove only resources that belong to the task. Preserve Git work and anything whose ownership is uncertain.
 
 ## Workflow
 
-1. Identify the target environment from the request or current worktree. Resolve its canonical path and Git common directory, then find the matching `<git-common-dir>/aidan-environments/<environment-id>/manifest.json`. If more than one manifest could match, ask the user to choose. Validate the schema version, repository identity, worktree path, branch, and environment ID before acting.
-2. If no valid manifest exists, perform read-only discovery and report what can be identified from `git worktree list --porcelain`, process metadata, container labels, and service configuration. Do not infer ownership from a name prefix or port alone. Ask for confirmation before removing any reconstructed resource, and create a recovery manifest when teardown will continue.
-3. Build a teardown plan from the manifest and compare every recorded item with live state. Classify resources as matched, already absent, changed, or unverifiable. Mark the manifest `tearing-down` and update it after each successful action so an interrupted teardown can resume.
-4. Inspect Git safety before removing files or the worktree. Record `git status --short --untracked-files=all`, the checked-out branch and `HEAD`, upstream, commits ahead of upstream, and containment in the intended integration ref. Dirty or untracked files block worktree removal. Unpushed commits, a missing upstream, or uncertain containment block branch deletion; preserve and report the branch when removing its clean worktree. These Git conditions do not block cleanup of runtime resources whose ownership is proven.
-5. Stop runtime resources in dependency order: application processes, task workers and watchers, containers or clusters, then backing-service namespaces and generated local files. Follow the resource-specific rules below.
-6. Verify that each owned process and service is gone. Check exact container labels and project names, explicit Kubernetes context and namespace, service resource names, and recorded process identity. A recorded port may have been reused, so do not stop a new listener merely because it now holds the same port.
-7. Remove the worktree from a different checkout with `git worktree remove <canonical-path>`. Never pass `--force`. Keep the branch by default. If the user explicitly asks to delete it, first prove it has no unpushed or unmerged commits, then use `git branch -d <branch>` from another worktree. Never use `git branch -D` or delete a remote branch as part of environment teardown.
-8. Delete the environment state directory only after every owned resource is gone and the worktree removal, when requested, succeeds. If a retained resource remains, keep the manifest with status `retired-with-retained-resources` until ownership is transferred to another recorded manifest or the resource is removed. For a partial teardown, set the status to `teardown-blocked`, retain the remaining-resource records, and report the exact blocker and safe next step.
+1. Identify the environment from the current session, repository instructions, worktree path, branch, setup commands, and runtime configuration. If details are missing, inspect Git and running services without changing them, then ask the user before removing anything uncertain.
+2. Build a cleanup plan covering the worktree, processes, containers, service namespaces, generated local files, and task-specific data. Compare each item with live state before acting. Treat a changed or reused resource as unrelated until ownership is proven.
+3. Inspect Git safety. Check `git status --short --untracked-files=all`, the branch, `HEAD`, upstream, unpushed commits, and whether the intended integration ref contains the task commits. Dirty or untracked files block worktree removal. Unpushed or unmerged commits block branch deletion.
+4. Stop runtime resources in dependency order: application processes, workers and watchers, containers or clusters, backing-service namespaces, then disposable generated files and data. Use the same project options, names, contexts, and configuration used during setup.
+5. Verify that each task-owned process and service is gone. Check exact process identity, container labels or project names, Kubernetes context and namespace, and backing-service resource names. Do not stop a listener based on its port alone because another process may have reused it.
+6. Keep the worktree when integration failed, when it contains changes, or when the user chose **Leave for later**. Otherwise remove a clean temporary worktree from another checkout with `git worktree remove <path>`. Never pass `--force`.
+7. Keep the branch by default. Delete it only when the user asks and `git branch -d` proves it is safely merged. Never use `git branch -D` or delete a remote branch during environment teardown.
+8. Verify Git no longer lists a removed worktree. Report removed resources, retained files and data, the branch name, and any manual follow-up command.
 
 ## Resource-specific rules
 
-For a recorded process, compare its PID, start time, command, and working directory with the live process. Signal it only when the identity still matches. Send the platform's normal termination signal and wait for shutdown. If it does not exit, report it and ask before using a forceful signal. A missing process counts as already absent; a reused PID counts as changed and must be left alone.
+For a process, compare its PID, command, start time when available, and working directory with the process started for the task. Send the normal termination signal and wait for shutdown. Ask before using a forceful signal.
 
-For Docker Compose, use the exact recorded project name, project directory, Compose files, profiles, and environment-file path on every command. Inspect the resolved project and labels before running `down`. Remove volumes only when the manifest marks each one as created by this environment and disposable. Keep external, shared, durable, and unverifiable volumes.
+For Docker Compose, use the same project name, project directory, Compose files, profiles, and environment file used during setup. Inspect the resolved project before running `down`. Remove volumes only when they were created for this task and contain no data that must be retained.
 
-For Kubernetes, pass the recorded context and namespace explicitly on every command. Verify the environment and repository ownership labels before deleting a namespace or resource. Never change the global current context, delete a context, or delete an unlabeled namespace based only on its name.
+For Kubernetes, pass the context and namespace explicitly. Verify task ownership labels before deleting a namespace or resource. Never change the global current context or delete an unlabeled namespace based on its name.
 
-For databases, schemas, Redis data, broker resources, buckets, search indexes, and cloud sandboxes, require the exact recorded name plus ownership evidence. Delete only resources marked as created by this environment. Never use wildcard, prefix-wide, account-wide, `flushall`, or cluster-wide cleanup commands. Preserve resources whose retention policy is `keep` or whose ownership cannot be checked.
+For databases, schemas, Redis data, broker resources, buckets, search indexes, and cloud sandboxes, require the exact task-specific name and clear ownership. Never use wildcard, prefix-wide, account-wide, `flushall`, or cluster-wide cleanup commands.
 
-For generated files and directories, compare the current content or hash with the manifest. Remove an unchanged file created by setup. Preserve and report a changed file, symlink with a different target, directory containing unrecorded entries, or any path outside the canonical worktree and manifest-owned state directory. Never recursively remove a path assembled from an empty or unvalidated variable.
+For generated files and directories, remove only items created for the environment that remain safe to discard. Preserve changed files, directories with unknown contents, symlinks with unexpected targets, and paths outside the task checkout.
 
 ## Git safety
 
-Do not stash, reset, clean, commit, push, or discard work to make teardown pass. Show the user the blocking paths and commits. A missing upstream leaves push status unknown, so keep the branch and report its exact name and `HEAD`. Before and after removing a clean worktree, verify that the branch ref still resolves to the recorded `HEAD`; uncommitted files still block removal.
+Do not stash, reset, clean, commit, push, or discard work to make teardown pass. A missing upstream leaves push status uncertain, so preserve the branch and report its exact name and `HEAD`. Fetch only with approval or when repository instructions already permit it.
 
-Do not equate the setup-time base ref with the integration ref: the base ref records where work began, while safe branch deletion requires a current ref that contains the finished commits. Fetch only with approval or when repository instructions already permit it. Use the nominated local or remote-tracking integration ref for the containment check and report when it may be stale.
-
-## Final verification
-
-Confirm that no process with the recorded identity remains, no service resource with the environment's verified ownership remains unless its retention policy says to keep it, and the worktree path is absent when removal was requested. Run `git worktree list --porcelain` to check Git's view. Keep or transfer the manifest for every retained owned resource. Report retained data, retained branch names, skipped resources, and any manual follow-up with exact identifiers.
+A teardown failure leaves the environment in place. Preserve files, branches, services, and diagnostic evidence needed to resume. Report the exact blocker and safe next step instead of claiming cleanup succeeded.
