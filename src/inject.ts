@@ -7,19 +7,19 @@ import type {
   ExtensionHandler,
 } from "@earendil-works/pi-coding-agent";
 import {
+  BEFORE_USER_MESSAGE_TYPE,
   buildMessage,
   endsWithFileMutation,
   insertBeforeLastUserMessage,
+  INSTRUCTIONS_TAG,
   REMINDER_MESSAGE_TYPE,
   REMINDER_TAG,
-  RULES_MESSAGE_TYPE,
-  RULES_TAG,
   wrapInBlock,
 } from "./messages.ts";
 import { readPromptFile } from "./prompt-file.ts";
 
 export const SYSTEM_PROMPT_FILE = "system.md";
-export const RULES_PROMPT_FILE = "rules.md";
+export const BEFORE_USER_PROMPT_FILE = "before-user.md";
 export const AFTER_WRITE_PROMPT_FILE = "after-write.md";
 
 interface ContextEventResult {
@@ -56,7 +56,7 @@ export function createHandlers(promptsDir: string): AidanHandlers {
 
   return {
     beforeAgentStart: async (event, ctx) => {
-      const system = await loadBlock(SYSTEM_PROMPT_FILE, RULES_TAG, ctx);
+      const system = await loadBlock(SYSTEM_PROMPT_FILE, INSTRUCTIONS_TAG, ctx);
       if (system === undefined) {
         return undefined;
       }
@@ -64,19 +64,23 @@ export function createHandlers(promptsDir: string): AidanHandlers {
     },
 
     context: async (event, ctx) => {
-      const rules = await loadBlock(RULES_PROMPT_FILE, RULES_TAG, ctx);
+      const beforeUser = await loadBlock(
+        BEFORE_USER_PROMPT_FILE,
+        INSTRUCTIONS_TAG,
+        ctx,
+      );
       const reminder = endsWithFileMutation(event.messages)
         ? await loadBlock(AFTER_WRITE_PROMPT_FILE, REMINDER_TAG, ctx)
         : undefined;
-      if (rules === undefined && reminder === undefined) {
+      if (beforeUser === undefined && reminder === undefined) {
         return undefined;
       }
 
       let messages = event.messages;
-      if (rules !== undefined) {
+      if (beforeUser !== undefined) {
         messages = insertBeforeLastUserMessage(
           messages,
-          buildMessage(RULES_MESSAGE_TYPE, rules),
+          buildMessage(BEFORE_USER_MESSAGE_TYPE, beforeUser),
         );
       }
       if (reminder !== undefined) {

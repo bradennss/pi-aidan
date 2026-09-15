@@ -3,10 +3,10 @@ import type { ContextEvent } from "@earendil-works/pi-coding-agent";
 export type AgentMessage = ContextEvent["messages"][number];
 type CustomMessage = Extract<AgentMessage, { role: "custom" }>;
 
-export const RULES_MESSAGE_TYPE = "aidan-rules";
+export const BEFORE_USER_MESSAGE_TYPE = "aidan-before-user";
 export const REMINDER_MESSAGE_TYPE = "aidan-reminder";
 
-export const RULES_TAG = "EXTREMELY_IMPORTANT";
+export const INSTRUCTIONS_TAG = "EXTREMELY_IMPORTANT";
 export const REMINDER_TAG = "IMPORTANT_REMINDER";
 
 const FILE_MUTATION_TOOLS = new Set(["write", "edit"]);

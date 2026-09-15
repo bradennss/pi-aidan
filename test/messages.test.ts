@@ -58,9 +58,9 @@ describe("wrapInBlock", () => {
 
 describe("buildMessage", () => {
   it("builds a hidden custom message", () => {
-    expect(buildMessage("aidan-rules", "Rules.", 7)).toEqual({
+    expect(buildMessage("aidan-before-user", "Rules.", 7)).toEqual({
       role: "custom",
-      customType: "aidan-rules",
+      customType: "aidan-before-user",
       content: "Rules.",
       display: false,
       timestamp: 7,

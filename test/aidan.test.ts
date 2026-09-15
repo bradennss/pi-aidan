@@ -12,8 +12,8 @@ import aidan, { PROMPTS_DIR } from "../index.ts";
 import {
   AFTER_WRITE_PROMPT_FILE,
   type AidanHandlers,
+  BEFORE_USER_PROMPT_FILE,
   createHandlers,
-  RULES_PROMPT_FILE,
   SYSTEM_PROMPT_FILE,
 } from "../src/inject.ts";
 import type { AgentMessage } from "../src/messages.ts";
@@ -72,7 +72,7 @@ describe("createHandlers", () => {
   beforeEach(() => {
     promptsDir = mkdtempSync(path.join(tmpdir(), "pi-aidan-"));
     writeFileSync(path.join(promptsDir, SYSTEM_PROMPT_FILE), "");
-    writeFileSync(path.join(promptsDir, RULES_PROMPT_FILE), "");
+    writeFileSync(path.join(promptsDir, BEFORE_USER_PROMPT_FILE), "");
     writeFileSync(path.join(promptsDir, AFTER_WRITE_PROMPT_FILE), "");
     warnings = [];
     ctx = {
@@ -133,8 +133,8 @@ describe("createHandlers", () => {
     expect(await startAgent("Base.")).toBeUndefined();
   });
 
-  it("puts the rules in front of the newest user message", async () => {
-    writePrompt(RULES_PROMPT_FILE, "Reply in lowercase.");
+  it("puts the writing prompt in front of the newest user message", async () => {
+    writePrompt(BEFORE_USER_PROMPT_FILE, "Reply in lowercase.");
 
     const result = await run([user("first"), user("second")]);
 
@@ -148,11 +148,11 @@ describe("createHandlers", () => {
     ]);
   });
 
-  it("reads the rules again for every request", async () => {
-    writePrompt(RULES_PROMPT_FILE, "First rules.");
+  it("reads the writing prompt again for every request", async () => {
+    writePrompt(BEFORE_USER_PROMPT_FILE, "First rules.");
     await run([user("hello")]);
 
-    writePrompt(RULES_PROMPT_FILE, "Second rules.");
+    writePrompt(BEFORE_USER_PROMPT_FILE, "Second rules.");
     const result = await run([user("hello")]);
 
     expect(contents(result)[0]).toContain("Second rules.");
@@ -160,7 +160,7 @@ describe("createHandlers", () => {
   });
 
   it("adds the reminder after a write tool result", async () => {
-    writePrompt(RULES_PROMPT_FILE, "Reply in lowercase.");
+    writePrompt(BEFORE_USER_PROMPT_FILE, "Reply in lowercase.");
     writePrompt(AFTER_WRITE_PROMPT_FILE, "Check the file you wrote.");
 
     const result = await run([user("hello"), writeResult()]);
@@ -188,12 +188,12 @@ describe("createHandlers", () => {
   });
 
   it("warns once about a prompt file it cannot read", async () => {
-    rmSync(path.join(promptsDir, RULES_PROMPT_FILE));
+    rmSync(path.join(promptsDir, BEFORE_USER_PROMPT_FILE));
 
     await run([user("hello")]);
     await run([user("hello")]);
 
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain(RULES_PROMPT_FILE);
+    expect(warnings[0]).toContain(BEFORE_USER_PROMPT_FILE);
   });
 });
