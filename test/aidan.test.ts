@@ -9,14 +9,12 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import aidan from "../index.ts";
-import {
-  AFTER_WRITE_PROMPT_FILE,
-  type AidanHandlers,
-  BEFORE_USER_PROMPT_FILE,
-  createHandlers,
-  SYSTEM_PROMPT_FILE,
-} from "../src/inject.ts";
+import { type AidanHandlers, createHandlers } from "../src/inject.ts";
 import type { AgentMessage } from "../src/messages.ts";
+
+const SYSTEM_PROMPT_FILE = "system.md";
+const BEFORE_USER_PROMPT_FILE = "before-user.md";
+const AFTER_WRITE_PROMPT_FILE = "after-write.md";
 
 interface ContextEventResult {
   messages?: ContextEvent["messages"];

@@ -4,7 +4,6 @@ import {
   buildMessage,
   endsWithFileMutation,
   insertBeforeLastUserMessage,
-  wrapInBlock,
 } from "../src/messages.ts";
 
 function user(content: string): AgentMessage {
@@ -47,14 +46,6 @@ function assistant(): AgentMessage {
     timestamp: 1,
   };
 }
-
-describe("wrapInBlock", () => {
-  it("puts the content between the tags", () => {
-    expect(wrapInBlock("EXTREMELY_IMPORTANT", "Rules.")).toBe(
-      "<EXTREMELY_IMPORTANT>\n\nRules.\n\n</EXTREMELY_IMPORTANT>",
-    );
-  });
-});
 
 describe("buildMessage", () => {
   it("builds a hidden custom message", () => {

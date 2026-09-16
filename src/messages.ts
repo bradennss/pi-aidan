@@ -3,17 +3,7 @@ import type { ContextEvent } from "@earendil-works/pi-coding-agent";
 export type AgentMessage = ContextEvent["messages"][number];
 type CustomMessage = Extract<AgentMessage, { role: "custom" }>;
 
-export const BEFORE_USER_MESSAGE_TYPE = "aidan-before-user";
-export const REMINDER_MESSAGE_TYPE = "aidan-reminder";
-
-export const INSTRUCTIONS_TAG = "EXTREMELY_IMPORTANT";
-export const REMINDER_TAG = "IMPORTANT_REMINDER";
-
 const FILE_MUTATION_TOOLS = new Set(["write", "edit"]);
-
-export function wrapInBlock(tag: string, content: string): string {
-  return `<${tag}>\n\n${content}\n\n</${tag}>`;
-}
 
 export function buildMessage(
   customType: string,

@@ -1,26 +1,15 @@
-import path from "node:path";
 import type {
   BeforeAgentStartEvent,
   BeforeAgentStartEventResult,
   ContextEvent,
-  ExtensionContext,
   ExtensionHandler,
 } from "@earendil-works/pi-coding-agent";
 import {
-  BEFORE_USER_MESSAGE_TYPE,
   buildMessage,
   endsWithFileMutation,
   insertBeforeLastUserMessage,
-  INSTRUCTIONS_TAG,
-  REMINDER_MESSAGE_TYPE,
-  REMINDER_TAG,
-  wrapInBlock,
 } from "./messages.ts";
-import { readPromptFile } from "./prompt-file.ts";
-
-export const SYSTEM_PROMPT_FILE = "system.md";
-export const BEFORE_USER_PROMPT_FILE = "before-user.md";
-export const AFTER_WRITE_PROMPT_FILE = "after-write.md";
+import { createPromptLoader, PROMPTS } from "./prompts.ts";
 
 interface ContextEventResult {
   messages?: ContextEvent["messages"];
@@ -35,28 +24,11 @@ export interface AidanHandlers {
 }
 
 export function createHandlers(promptsDir: string): AidanHandlers {
-  const warned = new Set<string>();
-
-  async function loadBlock(
-    file: string,
-    tag: string,
-    ctx: ExtensionContext,
-  ): Promise<string | undefined> {
-    const promptPath = path.join(promptsDir, file);
-    const content = await readPromptFile(promptPath);
-    if (content === undefined) {
-      if (!warned.has(promptPath)) {
-        warned.add(promptPath);
-        ctx.ui.notify(`pi-aidan cannot read ${promptPath}`, "warning");
-      }
-      return undefined;
-    }
-    return content === "" ? undefined : wrapInBlock(tag, content);
-  }
+  const prompts = createPromptLoader(promptsDir);
 
   return {
     beforeAgentStart: async (event, ctx) => {
-      const system = await loadBlock(SYSTEM_PROMPT_FILE, INSTRUCTIONS_TAG, ctx);
+      const system = await prompts.load("system", ctx);
       if (system === undefined) {
         return undefined;
       }
@@ -64,13 +36,9 @@ export function createHandlers(promptsDir: string): AidanHandlers {
     },
 
     context: async (event, ctx) => {
-      const beforeUser = await loadBlock(
-        BEFORE_USER_PROMPT_FILE,
-        INSTRUCTIONS_TAG,
-        ctx,
-      );
+      const beforeUser = await prompts.load("beforeUser", ctx);
       const reminder = endsWithFileMutation(event.messages)
-        ? await loadBlock(AFTER_WRITE_PROMPT_FILE, REMINDER_TAG, ctx)
+        ? await prompts.load("reminder", ctx)
         : undefined;
       if (beforeUser === undefined && reminder === undefined) {
         return undefined;
@@ -80,11 +48,14 @@ export function createHandlers(promptsDir: string): AidanHandlers {
       if (beforeUser !== undefined) {
         messages = insertBeforeLastUserMessage(
           messages,
-          buildMessage(BEFORE_USER_MESSAGE_TYPE, beforeUser),
+          buildMessage(PROMPTS.beforeUser.messageType, beforeUser),
         );
       }
       if (reminder !== undefined) {
-        messages = [...messages, buildMessage(REMINDER_MESSAGE_TYPE, reminder)];
+        messages = [
+          ...messages,
+          buildMessage(PROMPTS.reminder.messageType, reminder),
+        ];
       }
       return { messages };
     },
