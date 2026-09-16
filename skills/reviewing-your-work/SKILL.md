@@ -1,6 +1,6 @@
 ---
 name: reviewing-your-work
-description: Review an agent's own file changes before finalizing, committing, opening a pull request, or reporting completion. Use after every code, configuration, schema, test, documentation, prompt, or skill change, even when the user does not ask for review. The implementing agent must inspect its own work; substantive changes also require bounded fresh-context subagent review.
+description: Review an agent's own file changes before finalizing, committing, opening a pull request, or reporting completion. Use after every file change, even when the user does not ask for review. The implementing agent must inspect its own work. Implementation, prompt, skill, and behavior-affecting content changes require bounded fresh-context subagent review; content with no rendered, executable, runtime, or deployed effect does not.
 compatibility: Requires Git, Bash, mktemp, standard Unix utilities, and a host that can launch a read-only subagent in a fresh context.
 ---
 
@@ -10,9 +10,9 @@ Treat review as a required delivery gate after changing files. Keep the implemen
 
 ## Workflow
 
-1. Finish the implementation and its required focused, repository, and end-to-end checks before starting the final review. If a check is blocked or failing, keep the work unfinished and include that evidence in the review packet.
+1. Finish the change and its required focused, repository, and end-to-end checks before starting the final review. If a check is blocked or failing, keep the work unfinished and include that evidence in the review packet.
 2. Review the work personally. Read every changed line, `git status`, the relevant surrounding source, tests, configuration, and documentation. Check the user's goal, active instructions, affected callers, failure paths, compatibility, security, scope, test quality, and prose. Fix issues found in this pass and rerun affected checks.
-3. Decide whether independent review is required. Use it for every code, test, executable configuration, schema, dependency, infrastructure, prompt, or skill change. A trivial non-executable wording or formatting change may use the personal pass alone; state that decision in the final response.
+3. Decide whether independent review is required. Use it for every code, test, executable configuration, schema, dependency, infrastructure, prompt, skill, or mixed implementation and content change. Also use it for documentation, examples, plans, or notes that affect rendered, executable, runtime, or deployed behavior. Skip independent review only when changes are limited to content with none of those effects. If independent review is skipped, require the personal pass and applicable validation to succeed, state the decision in the final response, report the review as `clean`, and continue with the calling workflow without running steps 4 through 11.
 4. Resolve `scripts/capture-diff.sh` relative to this `SKILL.md`, then execute its absolute path with the target repository root as the working directory. Record the absolute path it prints. The script writes staged, unstaged, and non-ignored untracked changes, including binary changes, to a temporary file outside the repository without changing the index.
 5. Build a cold-start review packet with:
    - the repository root, current `HEAD`, and diff artifact path
