@@ -1,6 +1,6 @@
 ---
 name: finishing-up-work
-description: Finish a task that changed files or project state by checking setup, end-to-end verification, self-review, user-directed commit or integration, and safe teardown. Use before reporting implementation complete and when the user asks to finish, wrap up, commit, merge locally, create a pull request, or leave changes for later.
+description: Finish completed implementation work in a software project through required checks, end-to-end verification, self-review, user-directed commit or integration, and safe teardown. Use after changing project files or project state, before reporting implementation complete, and when the user asks to finish, wrap up, commit, merge locally, create a pull request, or leave project changes for later.
 compatibility: Requires Git plus the verifying-end-to-end and reviewing-your-work skills. Temporary environments also require tearing-down-an-environment. Local merge and pull request options may require remote credentials and a repository hosting CLI.
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: tearing-down-an-environment
-description: Tear down an isolated development environment created for a task or work session. Use when finishing work, removing a task worktree or development stack, or cleaning up its ports, processes, containers, namespaces, and local data.
+description: Tear down an isolated development environment created for a software project task. Use after finishing project work to remove a task worktree or development stack and clean up its ports, processes, containers, namespaces, and local data.
 ---
 
 # Tearing down an environment

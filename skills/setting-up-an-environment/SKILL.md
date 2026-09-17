@@ -1,11 +1,11 @@
 ---
 name: setting-up-an-environment
-description: Set up an isolated development environment at the start of a session in an existing repository. Prefer the project's documented method, otherwise use a linked Git worktree. Skip isolation for small, low-risk changes when it adds little value. Do not use when creating a new project.
+description: Prepare an existing software project for implementation by choosing the current checkout or an isolated development environment, checking repository instructions and state, and preventing resource collisions. Use before changing project code, dependencies, configuration, schemas, infrastructure, UI, APIs, workers, or project CLIs. Skip read-only investigation and new project creation.
 ---
 
 # Setting up an environment
 
-Create the worktree and runtime isolation before installing dependencies or starting services. Match the effort to the task's collision risk.
+Prepare the project checkout and runtime isolation before installing project dependencies or starting project services. Match the effort to the task's collision risk.
 
 ## Workflow
 
@@ -16,7 +16,7 @@ Create the worktree and runtime isolation before installing dependencies or star
 5. Configure each relevant resource through the project's supported environment variables, profiles, local files, or tool flags. Keep generated output in the task checkout. Shared immutable package caches are acceptable; shared writable application state is not.
 6. Install dependencies in the task checkout. Start only the services needed for implementation or verification, and keep the exact start, stop, and re-entry commands available for teardown.
 7. Verify the environment before implementation. Check the branch and `git status`, service health and logs, bound ports, container or namespace identity, backing-service connections, and fallback to shared defaults. Run the repository's documented smoke check when one exists.
-8. Report the checkout path, branch, isolated names and ports, service URLs, setup commands, verification result, and cleanup commands.
+8. Report the checkout path, branch, isolated names and ports, service URLs, setup commands, verification result, and cleanup commands. Continue with the implementation, then load `finishing-up-work` before reporting the project change complete.
 
 ## Isolation rules
 

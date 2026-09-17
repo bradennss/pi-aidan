@@ -17,6 +17,7 @@ Build the smallest working project that meets the request. Leave it with one com
 6. Add strict static checks, deterministic formatting, a small test, and scripts or task-runner targets for each check. Configure warnings to fail CI.
 7. Write `AGENTS.md` from the files and commands in this repository. Then create `CLAUDE.md` as a relative symlink to it.
 8. Run formatting, linting, type checking, tests, and a build when the project builds an artifact. Fix every failure, then rerun the full check command.
+9. Load `finishing-up-work` before reporting the new project complete.
 
 ## Tooling baseline
 

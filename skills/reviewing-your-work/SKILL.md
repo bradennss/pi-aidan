@@ -1,12 +1,12 @@
 ---
 name: reviewing-your-work
-description: Review an agent's completed file changes before finalizing, committing, opening a pull request, or reporting completion. The implementing agent must inspect its own work. Substantive or high-risk changes normally require bounded fresh-context subagent review; small, low-risk changes do not, and the user may waive independent review.
+description: Review completed implementation changes in a software project before finalizing, committing, opening a pull request, or reporting implementation complete. Use after project checks and end-to-end verification. The implementing agent must inspect its own work. Substantive or high-risk project changes normally require bounded fresh-context subagent review; small, low-risk changes do not, and the user may waive independent review.
 compatibility: Requires Git, Bash, mktemp, and standard Unix utilities. Independent review requires a host that can launch a read-only subagent in a fresh context.
 ---
 
 # Reviewing your work
 
-Treat review as a required delivery gate after changing files. Keep the implementing agent as the sole writer and final judge. A review subagent finds issues and never edits project files.
+Treat review as a required delivery gate after changing software project files. Keep the implementing agent as the sole writer and final judge. A review subagent finds issues and never edits project files.
 
 ## Workflow
 

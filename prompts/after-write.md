@@ -19,5 +19,3 @@ Apply the writing rules again:
 - Remove em dashes, emoji, "not X, but Y" constructions, comparison flourishes, definitional glosses, and self-repeating aphorisms.
 - Keep Markdown easy to scan. Use short paragraphs, useful headings, lists only for genuine sets, and backticks for paths, commands, identifiers, and flags.
 - State only what you verified. If a required check failed or couldn't run, give the command and the reason.
-
-Inspect the diff after fixing the files. Run the required checks, including end-to-end verification when the change affects executable behavior. Then reread the reply you plan to send, fix the same problems there, and reply only when both reviews are complete.

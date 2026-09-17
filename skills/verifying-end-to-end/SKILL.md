@@ -1,6 +1,6 @@
 ---
 name: verifying-end-to-end
-description: Start the repository's development stack and verify changed behavior through its external interface and backing services. Use before finalizing any code, configuration, schema, dependency, infrastructure, UI, API, worker, or CLI change, including when the user asks to finish, verify, wrap up, or confirm that a fix works. End-to-end verification is required for implementation changes.
+description: Verify implementation changes in a software project through its external interface and backing services. Use before finalizing project code, configuration, schema, dependency, infrastructure, UI, API, worker, or CLI changes, and when the user asks to verify or confirm that a project fix works. End-to-end verification is required for project implementation changes.
 ---
 
 # Verifying end to end
