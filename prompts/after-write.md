@@ -1,23 +1,10 @@
-You just changed one or more files. Before replying, reread every line you wrote or edited and fix anything that breaks these rules.
+You changed files. Before replying, reread every changed line and inspect the full diff.
 
-Check the implementation:
-
-- Confirm the changed path is complete. Remove stubs, placeholder returns, production fakes, TODO implementations, and unimplemented branches.
-- Confirm the root cause is fixed, failure paths are handled, and every affected in-repository caller is updated directly. Remove shims, forwarding wrappers, aliases, and re-exports unless an approved external contract requires one.
-- Compare the behavior with the relevant unit and end-to-end tests. Add or update coverage only when it protects non-obvious observable behavior or a stable contract against a plausible regression, such as a business rule, edge case, branch, failure mode, state transition, side effect, or integration boundary.
-- Skip tests for behavior enforced by the compiler, type checker, linter, schema checker, or consuming tool. Skip language mechanics and code with no meaningful decision to preserve, such as a constructor assigning its arguments or a trivial getter returning its field. Constructors with defaults, validation, normalization, invariants, or side effects can warrant tests.
-- Don't create a test solely because a file changed. Don't add a separate assertion whose only purpose is proving the old behavior is absent unless that forbidden outcome is part of the contract and has a plausible path to recur. Check manifests and tool configuration with the tool that consumes them. Don't weaken assertions to make the implementation pass. Remove tests that assert incidental implementation details or duplicate prompt and policy wording merely to prove instructions exist. Keep exact-text assertions only when the text is an external contract.
-- Fix small, related defects found on the approved path. Stop and ask before cleanup or redesign materially expands the scope.
-- Recheck function boundaries, raw domain literals, repeated values, payload parsing, typed validation, module APIs, and interfaces between modules.
-- Recheck external choices against current primary documentation. Prefer the standard library or an established, maintained package for common concerns, and confirm any added dependency fits the project.
-- Rewrite unclear code before adding a comment. Keep comments only for reasoning, constraints, or external behavior the code cannot express.
-
-Check code, comments, docstrings, documentation, errors, logs, commit text, pull request text, and other prose. Confirm that the change matches nearby conventions and says nothing unsupported. If the user asked for commits, separate independent changes and keep each message terse and on one line unless a body carries essential context. Remove AI or assistant attribution from project history. Pull request text should explain why the change is needed without narrating the diff.
-
-Apply the writing rules again:
-
-- Lead with the point. Use plain, terse, specific language, active voice, and varied sentence shapes.
-- Cut filler, repetition, padding, vague claims, unnecessary qualifiers, inflated language, and stale AI or business phrasing.
-- Remove em dashes, emoji, "not X, but Y" constructions, comparison flourishes, definitional glosses, and self-repeating aphorisms.
-- Keep Markdown easy to scan. Use short paragraphs, useful headings, lists only for genuine sets, and backticks for paths, commands, identifiers, and flags.
-- State only what you verified. If a required check failed or couldn't run, give the command and the reason.
+- Confirm the path is complete, fixes the cause, handles meaningful failures, and updates every affected in-repository caller. Remove stubs, placeholders, unfinished branches, and unapproved compatibility layers.
+- Compare the result with relevant tests. Add or update coverage only for stable observable behavior or a plausible regression. Don't test compiler-enforced behavior, incidental details, or policy wording.
+- Check function boundaries, domain constants, payload validation, module APIs, dependencies, and current primary documentation. Rewrite unclear code before adding comments.
+- Keep small fixes on the approved path. Ask before broader cleanup or redesign.
+- Run focused checks, required project checks, and applicable end-to-end verification. Fix failures and rerun affected checks.
+- Review code and prose for accuracy, nearby conventions, scope, and the user's writing rules. Remove filler, repetition, vague claims, inflated language, em dashes, emoji, and assistant attribution.
+- If commits were requested, separate independent changes and use terse messages. Pull request text should explain why.
+- State only verified results. Give the failed command and remaining uncertainty for anything blocked.

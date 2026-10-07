@@ -1,25 +1,20 @@
 ---
 name: writing-skills
-description: Create, revise, review, and evaluate Agent Skills packages, including SKILL.md metadata, workflows, reference files, scripts, and tests. Use when authoring, scaffolding, debugging, or improving a skill for Pi, Claude Code, or another Agent Skills-compatible agent.
+description: Create, revise, review, and evaluate Agent Skills packages. Use when authoring, scaffolding, debugging, or improving SKILL.md files, bundled references, scripts, assets, or skill tests.
 ---
 
 # Writing skills
 
-Create the smallest skill that fixes an observed gap. Keep instructions specific to the task and assume the agent already knows general concepts.
+Create the smallest skill that fixes an observed agent gap. Assume the agent knows general concepts.
 
-## Workflow
+1. Inspect the repository, discovery paths, target harness documentation, and nearby skills. Preserve local conventions and stop on conflicts.
+2. Before writing extensive instructions, define three representative fresh-context evaluations with verifiable success criteria: normal use, an edge case, and discovery or routing when relevant. Add more only when risk or distinct model classes require them. Record evaluations outside the package unless the repository has a suite.
+3. Choose instruction precision by risk. Use heuristics for contextual work, parameterized patterns for flexible work, and exact commands for fragile or ordered operations.
+4. Write valid frontmatter and the shortest workflow that addresses observed failures. Add references, scripts, examples, templates, and edge cases only when they change behavior.
+5. Validate metadata, links, scripts, dependencies, and line count. Run evaluations only with models confirmed runnable and authenticated in the current harness. Fix failures, rerun affected cases, then rerun the full set.
+6. Review how agents discover and navigate the skill. Promote repeatedly needed guidance, strengthen missed links, and remove unused material.
 
-1. Inspect the target repository, its skill discovery paths, and nearby skills. Preserve local conventions and stop on conflicting files.
-2. Define at least three representative evaluations before writing extensive instructions. Record each task, the baseline failure or missing context, and verifiable success criteria in session notes, a temporary artifact outside the skill, or the repository's existing evaluation harness. Include normal use, an edge case, and skill discovery or routing when relevant. Do not add evaluation plans or results to the skill package unless the repository convention or user explicitly requires them.
-3. Choose the degree of freedom for each operation. Use heuristics for context-dependent work, pseudocode or parameterized scripts when a preferred pattern allows variation, and exact commands for fragile or order-dependent work.
-4. Create the skill directory and `SKILL.md`. Add only optional files that agents need when using the skill.
-5. Write the metadata first, then the shortest workflow that addresses the observed failures. Add examples, templates, edge cases, and validation only where they change agent behavior.
-6. Validate the package, then identify models that the current harness confirms are runnable and authenticated. Catalog entries and configured credentials only discover candidates; account support still needs confirmation. For Pi, discover candidates with `pi --list-models`, check credentials with `pi auth check --model <provider/model> --json`, and probe any model that has not completed a request in the current environment with `pi -p --no-session --no-tools --no-extensions --no-skills --no-prompt-templates --no-context-files --model <provider/model> -- "Reply with OK."`. Run the evaluations in fresh sessions only with confirmed models, covering every intended model class represented in that set. If a candidate is rejected as unsupported or unauthenticated, mark it ineligible, do not count the probe as an evaluation, and report the resulting coverage gap. Fix failures, rerun the affected evaluations, then rerun the full set.
-7. Review how agents navigate the skill. Promote repeatedly needed content into `SKILL.md`, make missed references more explicit, and remove files or instructions that agents do not use.
-
-## Structure
-
-Use this layout as needed:
+Use this portable structure as needed:
 
 ```text
 skill-name/
@@ -29,57 +24,12 @@ skill-name/
 └── assets/
 ```
 
-`SKILL.md` is required. Omit empty optional directories. Keep references one level from `SKILL.md`, use forward slashes in every path, and give files names that describe their contents.
+`SKILL.md` is required. Its `name` must match the directory and use 1 to 64 lowercase letters, numbers, or single hyphens. The `description` must state capability and activation cues in 1 to 1,024 characters. Keep setup details in the body and add optional frontmatter only when supported and needed.
 
-Keep `SKILL.md` under 500 lines and about 5,000 tokens. Move detailed domain material, long examples, schemas, and API documentation into focused files under `references/`. Add a table of contents to any reference longer than 100 lines.
+Keep `SKILL.md` under 500 lines and about 5,000 tokens. Put detailed domain material in focused references, add a contents list above 100 lines, use forward-slash relative paths, and omit empty directories.
 
-## Frontmatter
+Lead with actions. Keep order and conditional branches explicit. Prefer repository facts, safety guardrails, stable templates, concrete examples, and a run-fix-rerun loop. Remove background, generic advice, duplication, and time-sensitive claims.
 
-Start every skill with:
+Bundle deterministic scripts when they are safer or cheaper than regeneration. Declare requirements, handle expected failures, print repair guidance, and use fully qualified MCP tool names. For destructive or high-stakes batches, validate a machine-readable plan before mutation and verify the result.
 
-```yaml
----
-name: doing-the-task
-description: State what the skill does and the specific requests or contexts that should activate it.
----
-```
-
-The `name` must match the parent directory under the Agent Skills standard. Use 1 to 64 lowercase letters, numbers, or single hyphens. Do not start or end with a hyphen.
-
-The `description` must be 1 to 1,024 characters. Include both capability and activation cues, with terms users are likely to put in a request. Keep setup and workflow details in the body. Avoid vague descriptions such as "Helps with files."
-
-Add optional `license`, `compatibility`, `metadata`, or `allowed-tools` fields only when the package needs them. Check the target harness before relying on optional fields because support varies.
-
-## Writing instructions
-
-Lead with the action the agent should take. Use a numbered workflow when order matters and conditional branches when the next step depends on the input. Keep terminology consistent throughout.
-
-Prefer:
-
-- repository-specific facts the agent cannot infer
-- exact guardrails for destructive, costly, or error-prone operations
-- templates when output structure must be stable
-- concrete input and output examples when style or quality is hard to describe
-- a validation loop of run, inspect errors, fix, and rerun
-
-Remove background explanations, generic advice, duplicated rules, and lists of equivalent options. Avoid time-sensitive claims. When old behavior matters, label it as an old pattern and explain when it applies.
-
-## Scripts and resources
-
-Bundle a script when deterministic execution is safer or cheaper than generating the same code on each use. Scripts must handle expected failures, print specific repair guidance, document dependencies, and avoid unexplained constants.
-
-State whether the agent should execute a script or read it as a reference. Do not assume a package, binary, network connection, or credential exists; declare requirements in `compatibility` or the relevant setup step and check them before use. Write MCP tool names in their fully qualified `ServerName:tool_name` form.
-
-For batch, destructive, or high-stakes work, create a machine-readable plan, validate it before mutation, execute it, and verify the result. Preserve intermediate output when it helps diagnose or reverse a failure.
-
-## Evaluation
-
-Test these separately:
-
-- **Discovery:** the skill activates for representative requests and stays inactive for unrelated requests.
-- **Execution:** the agent follows required steps, loads the right references, handles edge cases, and produces the requested result.
-- **Verification:** scripts and checks catch invalid output with messages that tell the agent how to repair it.
-
-Run evaluations with fresh agent context so earlier instructions do not hide gaps. Keep definitions, transcripts, and results outside the skill package by default; package them only when they are part of an established repository test suite. Among confirmed runnable and authenticated models, test every intended model class, since smaller models may need clearer guidance while larger models may be hindered by extra explanation. Never treat catalog presence or credential readiness alone as eligibility. Base revisions on observed failures and navigation paths rather than imagined future needs.
-
-Before finishing, validate the frontmatter, relative links, script dependencies, evaluation results, and line count. Report which models and scenarios were tested, along with anything left unchecked.
+Evaluate discovery, execution, and validation separately in fresh sessions. Confirm model support with an actual request, then report tested models, scenarios, and coverage gaps.
