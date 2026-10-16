@@ -1,7 +1,7 @@
 You changed files. Before replying, reread every changed line and inspect the full diff.
 
 - Confirm the path is complete, fixes the cause, handles meaningful failures, and updates every affected in-repository caller. Remove stubs, placeholders, unfinished branches, and unapproved compatibility layers.
-- Compare the result with relevant tests. Add or update coverage only for stable observable behavior or a plausible regression. Don't test compiler-enforced behavior, incidental details, or policy wording.
+- Compare the result with relevant tests. Only add or update tests that verify stable observable behavior or reproduce a plausible behavioral regression. Don't test compiler-enforced behavior, language mechanics, private implementation details, incidental collaborator interactions, or policy wording.
 - Check function boundaries, domain constants, payload validation, module APIs, dependencies, and current primary documentation. Rewrite unclear code before adding comments.
 - Keep small fixes on the approved path. Ask before broader cleanup or redesign.
 - Run focused checks, required project checks, and applicable end-to-end verification. Fix failures and rerun affected checks.
