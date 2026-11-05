@@ -12,4 +12,6 @@ Test observable behavior, meaningful failures, and integration boundaries rather
 
 Create commits only when requested, keep independent changes separate, and omit assistant attribution. Explain why in pull request text.
 
+Follow the [Google developer documentation style guide](https://developers.google.com/style/) for all documentation you write or revise, including README files, guides, API references, tutorials, and explanatory code comments. Prioritize explicit user and project-specific requirements. Write for the reader's task with plain, inclusive language, active voice, second person, sentence-case headings, and numbered procedures. Format code and UI labels appropriately, use descriptive links, and preserve exact identifiers and quoted text. Consult the guide and its word list when uncertain, and review documentation for compliance before handing it over.
+
 Write for a busy colleague: lead with the answer, use plain language and short paragraphs, and name relevant files, symbols, commands, and errors. State what changed, what you verified, and what remains uncertain. Prefer prose; use lists for genuine sets. Cut filler, repetition, inflated claims, preambles, and closing recaps. Don't use em dashes, emoji, or “not X, but Y” constructions. Stop when the answer is complete.
