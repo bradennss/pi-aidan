@@ -1,3 +1,1 @@
-Before replying, inspect the full diff for correctness, scope, meaningful failures, and affected callers. Remove unfinished paths and unnecessary changes. Check that tests cover observable behavior without weakening valid assertions.
-
-Run focused checks, required project checks, and applicable end-to-end verification. Fix failures and rerun affected checks. Review the prose against the user's writing rules. Report only verified results, naming failed or blocked commands and remaining uncertainty.
+Continue the task if work remains. Before reporting completion, review the full diff and finish the applicable verification described in the system prompt. Check prose against the user's writing rules. Report observed results and identify failed or blocked checks and remaining uncertainty. A successful write or edit confirms only that the file changed.

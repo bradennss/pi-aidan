@@ -5,16 +5,16 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 export const PROMPTS = {
   system: {
     fileName: "system.md",
-    tag: "EXTREMELY_IMPORTANT",
+    tag: "aidan_system",
   },
   beforeUser: {
     fileName: "before-user.md",
-    tag: "EXTREMELY_IMPORTANT",
+    tag: "aidan_response_guidance",
     messageType: "aidan-before-user",
   },
   reminder: {
     fileName: "after-write.md",
-    tag: "IMPORTANT_REMINDER",
+    tag: "aidan_completion_check",
     messageType: "aidan-reminder",
   },
 } as const;

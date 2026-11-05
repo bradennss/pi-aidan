@@ -8,7 +8,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import aidan from "../index.ts";
+import aidan, { PROMPTS_DIR } from "../index.ts";
 import { type AidanHandlers, createHandlers } from "../src/inject.ts";
 import type { AgentMessage } from "../src/messages.ts";
 
@@ -113,7 +113,7 @@ describe("createHandlers", () => {
     writePrompt(SYSTEM_PROMPT_FILE, "You are Aidan.");
 
     expect(await startAgent("You are a coding assistant.")).toBe(
-      "You are a coding assistant.\n\n<EXTREMELY_IMPORTANT>\n\nYou are Aidan.\n\n</EXTREMELY_IMPORTANT>",
+      "You are a coding assistant.\n\n<aidan_system>\n\nYou are Aidan.\n\n</aidan_system>",
     );
   });
 
@@ -141,7 +141,7 @@ describe("createHandlers", () => {
       "user",
     ]);
     expect(contents(result)).toEqual([
-      "<EXTREMELY_IMPORTANT>\n\nReply in lowercase.\n\n</EXTREMELY_IMPORTANT>",
+      "<aidan_response_guidance>\n\nReply in lowercase.\n\n</aidan_response_guidance>",
     ]);
   });
 
@@ -169,8 +169,58 @@ describe("createHandlers", () => {
       "custom",
     ]);
     expect(contents(result)[1]).toBe(
-      "<IMPORTANT_REMINDER>\n\nCheck the file you wrote.\n\n</IMPORTANT_REMINDER>",
+      "<aidan_completion_check>\n\nCheck the file you wrote.\n\n</aidan_completion_check>",
     );
+  });
+
+  it("assembles bundled prompts without changing the source messages", async () => {
+    handlers = createHandlers(PROMPTS_DIR);
+    const messages = [user("Update the file."), writeResult()];
+    const original = structuredClone(messages);
+
+    const system = await startAgent("Host instructions.");
+    const result = await run(messages);
+
+    expect(system).toMatch(/^Host instructions\.\n\n<aidan_system>\n\n\S/);
+    expect(system).toMatch(/\S\n\n<\/aidan_system>$/);
+    expect(result?.messages?.map((message) => message.role)).toEqual([
+      "custom",
+      "user",
+      "toolResult",
+      "custom",
+    ]);
+    expect(contents(result)[0]).toMatch(/^<aidan_response_guidance>\n\n\S/);
+    expect(contents(result)[0]).toMatch(/\S\n\n<\/aidan_response_guidance>$/);
+    expect(contents(result)[1]).toMatch(/^<aidan_completion_check>\n\n\S/);
+    expect(contents(result)[1]).toMatch(/\S\n\n<\/aidan_completion_check>$/);
+    expect(result?.messages?.[0]).toMatchObject({
+      customType: "aidan-before-user",
+      display: false,
+    });
+    expect(result?.messages?.[3]).toMatchObject({
+      customType: "aidan-reminder",
+      display: false,
+    });
+    expect(messages).toEqual(original);
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps response guidance but omits the reminder after a failed write", async () => {
+    writePrompt(BEFORE_USER_PROMPT_FILE, "Keep the reply concise.");
+    writePrompt(AFTER_WRITE_PROMPT_FILE, "Check the file you wrote.");
+    const failedWrite = { ...writeResult(), isError: true } as AgentMessage;
+
+    const result = await run([user("hello"), failedWrite]);
+
+    expect(result?.messages?.map((message) => message.role)).toEqual([
+      "custom",
+      "user",
+      "toolResult",
+    ]);
+    expect(contents(result)).toHaveLength(1);
+    expect(result?.messages?.[0]).toMatchObject({
+      customType: "aidan-before-user",
+    });
   });
 
   it("leaves the reminder out when nothing was written", async () => {
