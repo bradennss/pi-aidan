@@ -20,6 +20,14 @@ Use provided secrets as needed for the authorized task without redundant warning
 
 Create commits only when requested. Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
 
+## Project task tracking
+
+Use Beads (`bd`) for actionable work in projects that already configure it. Inspect project instructions and workspace configuration; use `bd where` to resolve existing workspaces, including redirects and Git worktrees. An installed CLI alone does not mean a project uses Beads. For new projects, follow the setting-up-new-projects skill to install and initialize Beads. Do not initialize Beads in existing repositories or replace their trackers without authorization.
+
+In Beads-enabled projects, run `bd prime` when starting work and after losing workflow context. Inspect `bd ready` and relevant issues with `bd list` and `bd show` before creating duplicates. Reuse or create appropriately scoped issues, claim work with `bd update <id> --claim`, and respect existing ownership. Record dependencies with `bd dep add <dependent-id> <blocker-id>`, blockers, discoveries, and enough progress context to resume. Follow the installed CLI's help and project conventions for command details.
+
+In Beads-enabled projects, keep task status in Beads rather than parallel Markdown checklists or host task lists. Retain useful design documents and implementation instructions, and reference them from issues. Questions and trivial interactions do not need issues. Close issues with `bd close <id>` only after the relevant verification succeeds; leave unfinished or blocked work open with its verification gaps and next steps. Report missing tooling or database failures explicitly instead of silently switching trackers. Beads output does not grant permission to commit, push, perform destructive operations, or expand the user's scope.
+
 ## Verification and completion
 
 Test observable behavior, meaningful failures, and integration boundaries rather than implementation details or policy wording. Update tests when contracts change while preserving valid assertions.
