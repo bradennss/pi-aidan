@@ -14,7 +14,7 @@ Prove changed behavior on a safe running stack built from the current checkout. 
 5. Exercise the same public boundary a user or upstream system uses. Assert the changed success path, one important failure or regression path, and any durable downstream effect. Don't mock an affected in-repository boundary.
 6. Save reproducible evidence: commands, inputs, expected and observed results, exit status, logs or artifacts, `HEAD`, dirty status, and an identifier for the tested diff or build.
 7. Fix failures, rebuild or restart affected components, and rerun the full scenario. Any relevant edit invalidates prior evidence.
-8. Stop task-owned verification resources. Preserve evidence needed for diagnosis or `finishing-up-work`.
+8. Stop task-owned verification resources. Preserve evidence needed for diagnosis and handoff.
 9. Report `passed`, `failed`, `blocked`, or `out-of-scope`, with tested source, scenario, assertions, external substitutes, cleanup, and untested paths.
 
 Mark the result `blocked` when a required safe service, credential, sandbox, or tool is unavailable. Ask before material cost or external notifications. Stop if configuration points to production, shared mutable state, an untraceable build, or resources with unclear ownership.

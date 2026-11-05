@@ -1,6 +1,6 @@
 # pi-aidan
 
-A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan.
+A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan. Aidan supplements [Superpowers](https://github.com/obra/superpowers) with communication guidance, project scaffolding, and live-stack end-to-end verification. Superpowers provides the development workflow, including brainstorming, planning, implementation, review, worktree management, and completion.
 
 ## Layout
 

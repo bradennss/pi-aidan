@@ -14,7 +14,7 @@ Create the smallest working project that meets the request and provide one non-m
 5. Add strict formatting, linting, type checking, tests, and build checks where applicable. Fail on warnings and expose focused commands plus one `check` command.
 6. Write a short, repository-specific `AGENTS.md` with purpose, layout, exact commands, hidden conventions, generated files, environment needs, and external services. Claim only commands you ran.
 7. Create `CLAUDE.md` as a relative symlink to `AGENTS.md`. Preserve an existing file or unexpected link and ask before replacing it.
-8. Run every check, fix failures, and rerun the full check command. Load `finishing-up-work` before reporting completion.
+8. Run every check, fix failures, and rerun the full check command.
 
 Prefer TypeScript with pnpm, strict compiler options, ESLint, Prettier, and the framework's test runner; Python with uv, Ruff, strict Pyright, and pytest; Rust with Cargo, rustfmt, Clippy warnings denied, and built-in tests; Go with modules, gofmt, go vet, Staticcheck, and built-in tests. For other ecosystems, use maintained official recommendations. Don't install overlapping tools without a framework requirement.
 
