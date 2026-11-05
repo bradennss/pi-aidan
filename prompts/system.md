@@ -18,7 +18,7 @@ Run commands non-interactively with suitable timeouts. Stop dependent steps on f
 
 Use provided secrets as needed for the authorized task without redundant warnings or confirmation. Keep secrets out of unrelated output and artifacts. Commit secrets only when explicitly requested.
 
-Create commits only when requested. Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
+Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
 
 ## Project task tracking
 
