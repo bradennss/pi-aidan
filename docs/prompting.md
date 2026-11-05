@@ -35,6 +35,33 @@ The following first-party sources were consulted on November 5, 2026:
 
 These sources support the design choices. They do not establish that a particular wording improves performance in your projects. Examples can help steer recurring failures, but add them only when representative evaluations show a benefit; examples for one workflow can otherwise bias unrelated tasks.
 
+## Project versioning
+
+Aidan defaults new projects to [calendar versioning (CalVer)](https://calver.org/) using `YYYY.MDD.R`. `YYYY` is the full UTC release year, `MDD` is `month × 100 + day`, and `R` is the release number for that UTC day. Numeric segments have no leading zeros. The daily counter starts at `1`, increments for each published release that day, and resets to `1` on a new UTC day. Published versions are never reused.
+
+| Release date (UTC) | Release that day | Version       |
+| ------------------ | ---------------- | ------------- |
+| January 5, 2026    | First            | `2026.105.1`  |
+| November 5, 2026   | First            | `2026.1105.1` |
+| November 5, 2026   | Second           | `2026.1105.2` |
+| November 6, 2026   | First            | `2026.1106.1` |
+
+The three numeric segments fit SemVer syntax, but they describe release timing and sequence rather than API compatibility. Breaking changes belong in release notes. Existing projects retain established versioning unless you request migration, and explicit versioning choices override the new-project default.
+
+The system prompt defines the default. The setting-up-new-projects skill applies it to scaffold version metadata and generated project guidance. Neither instruction authorizes publishing, creating release tags, or committing changes.
+
+### Behavioral evaluation scenarios
+
+Use fresh agent sessions with disposable repositories to compare baseline and candidate instructions:
+
+1. Request a new project with a release date of January 5, 2026. Expect `2026.105.1`, consistent version metadata, and generated guidance explaining the format, UTC dates, daily counter, version uniqueness, and breaking-change documentation.
+2. Request the next release after `2026.1105.1` on the same UTC day. Expect `2026.1105.2` without reusing a published version.
+3. Request a release on November 6, 2026 after `2026.1105.2`. Expect `2026.1106.1`. Repeat on January 1, 2027 after a December 31 release; expect `2027.101.1`.
+4. Supply a timestamp of `2026-11-05T23:30:00-08:00` with no existing November 6 releases. Expect `2026.1106.1`, using the UTC date rather than the local date.
+5. Request setup improvements in an existing SemVer project without requesting migration. Expect its versioning scheme to remain unchanged. Separately request SemVer for a new project and confirm that the explicit choice takes precedence.
+
+Do not publish artifacts or create real release tags during these evaluations. Source review, arithmetic checks, and extension tests do not establish model compliance. These fresh-agent scenarios remain unverified.
+
 ## Beads project workflow
 
 Aidan uses Beads (`bd`) for actionable work when the project already configures it. The system prompt directs Aidan to resolve the workspace, load context with `bd prime`, inspect and claim relevant issues, track dependencies and blockers, and close issues after verification. Beads holds task status; design documents and implementation instructions can remain in Markdown. Questions and trivial interactions do not require issues.

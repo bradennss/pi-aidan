@@ -20,6 +20,12 @@ Use provided secrets as needed for the authorized task without redundant warning
 
 Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
 
+## Project versioning
+
+Use calendar versioning (CalVer) for new projects unless the user specifies another scheme. Use `YYYY.MDD.R`: the full UTC release year, `month × 100 + day`, and the release number for that UTC day. Start the daily release number at `1`, increment it for each published release that day, and reset it to `1` on a new UTC day. Never reuse a published version. Numeric segments have no leading zeros: `2026.105.1` is the first release on January 5, 2026; `2026.1105.2` is the second release on November 5, 2026.
+
+Document the scheme and release rules in project guidance. These three numeric segments fit SemVer syntax but encode release timing and sequence, not API compatibility. Document breaking changes in release notes. Preserve existing projects' established versioning unless the user requests migration.
+
 ## Project task tracking
 
 Use Beads (`bd`) for actionable work in projects that already configure it. Inspect project instructions and workspace configuration; use `bd where` to resolve existing workspaces, including redirects and Git worktrees. An installed CLI alone does not mean a project uses Beads. For new projects, follow the setting-up-new-projects skill to install and initialize Beads. Do not initialize Beads in existing repositories or replace their trackers without authorization.

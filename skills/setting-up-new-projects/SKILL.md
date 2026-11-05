@@ -38,6 +38,22 @@ Use these defaults when the project has no established choices. Confirm current 
 | Go | Modules, gofmt, go vet, Staticcheck, built-in tests |
 | Other | Maintained official recommendations |
 
+## Set project versioning
+
+For a new project, use [calendar versioning (CalVer)](https://calver.org/) unless the user specifies another scheme. Preserve established versioning when standardizing an existing project; migrate only when requested.
+
+Use `YYYY.MDD.R`, with three numeric segments and no leading zeros:
+
+- `YYYY`: the full year of the UTC release date.
+- `MDD`: `month × 100 + day`, so January 5 is `105` and November 5 is `1105`.
+- `R`: the release number for that UTC day, starting at `1`. Increment it for each published release that day and reset it to `1` on a new UTC day. Never reuse a published version.
+
+For example, the first release on November 5, 2026 is `2026.1105.1`, the second is `2026.1105.2`, and the next day's first release is `2026.1106.1`. Use the UTC date even when the local date differs.
+
+Replace a new scaffold's placeholder version with the selected project scheme where the toolchain stores a project version. Keep existing version metadata consistent using the toolchain's supported commands, and check that those commands do not create commits or tags without authorization. Setting up version metadata does not authorize publishing a release.
+
+Document the scheme and release rules in generated project guidance. The format fits SemVer's three-segment numeric syntax, but it encodes release timing and sequence rather than API compatibility. Document breaking changes in release notes.
+
 ## Define the verification contract
 
 Expose focused commands for formatting validation, linting, type checking, tests, and build wherever applicable. The aggregate `check` command runs **all** applicable checks, stops on failure, and leaves source files unchanged. Keep formatting fixes in a separate command. Configure Markdown formatting to disable automatic prose wrapping: set Prettier's `proseWrap` to `"never"`, or use the equivalent setting in the chosen formatter. Configure checks to fail on warnings where supported.
@@ -62,7 +78,7 @@ Use the framework's build command when it provides one. Add meaningful tests for
 
 ## Document and hand off
 
-1. Write concise, repository-specific `AGENTS.md` guidance: purpose, layout, exact commands, non-obvious conventions, generated files, environment requirements, and external services. For Beads-enabled projects, document how to load context with `bd prime`, inspect and claim issues, record dependencies and blockers, and close verified work. Identify Beads as the task-status source of truth while retaining useful design documents. Preserve existing guidance and distinguish verified commands from blocked ones.
+1. Write concise, repository-specific `AGENTS.md` guidance: purpose, layout, exact commands, non-obvious conventions, the selected versioning scheme and release rules, generated files, environment requirements, and external services. For Beads-enabled projects, document how to load context with `bd prime`, inspect and claim issues, record dependencies and blockers, and close verified work. Identify Beads as the task-status source of truth while retaining useful design documents. Preserve existing guidance and distinguish verified commands from blocked ones.
 2. Create `CLAUDE.md` as a relative symlink to `AGENTS.md`. Preserve existing files and unexpected links; ask before replacing them. Verify the target with `test -L CLAUDE.md` and `test "$(readlink CLAUDE.md)" = AGENTS.md`. If symlinks are unsupported, report the limitation instead of copying the file.
 3. Run every required check, fix failures, then rerun the complete `check` command. Use verifying-end-to-end for applicable public-interface and backing-service verification.
 4. Report what works, the commands actually run, and remaining blockers. Missing dependencies, credentials, or services leave affected verification blocked.
