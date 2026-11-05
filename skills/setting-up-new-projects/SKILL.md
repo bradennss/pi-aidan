@@ -1,31 +1,62 @@
 ---
 name: setting-up-new-projects
-description: Create or standardize a software project with current tooling, strict checks, tests, repository guidance, and a CLAUDE.md symlink. Use for new repositories, services, scaffolds, or project setup.
+description: Use when creating a repository, scaffolding an application or service, or standardizing an existing project's development setup.
 ---
 
 # Setting up new projects
 
-Create the smallest working project that meets the request and provide one non-mutating command for every required check.
+## Overview
 
-1. Confirm only scaffold decisions that affect the result. Inspect the destination and stop on conflicts.
-2. Initialize Git only for a new destination outside an existing repository. Preserve existing topology and files.
-3. Check current official documentation for initializers, config, and tool options. Use the ecosystem's maintained defaults and keep the lockfile.
-4. Run the official initializer when it fits. Remove demo code and unused dependencies.
-5. Add strict formatting, linting, type checking, tests, and build checks where applicable. Fail on warnings and expose focused commands plus one `check` command.
-6. Write a short, repository-specific `AGENTS.md` with purpose, layout, exact commands, hidden conventions, generated files, environment needs, and external services. Claim only commands you ran.
-7. Create `CLAUDE.md` as a relative symlink to `AGENTS.md`. Preserve an existing file or unexpected link and ask before replacing it.
-8. Run every check, fix failures, and rerun the full check command.
+Deliver the smallest working project with reproducible setup and one non-mutating `check` command covering every required check. Generated files are a starting point; successful verification establishes readiness.
 
-Prefer TypeScript with pnpm, strict compiler options, ESLint, Prettier, and the framework's test runner; Python with uv, Ruff, strict Pyright, and pytest; Rust with Cargo, rustfmt, Clippy warnings denied, and built-in tests; Go with modules, gofmt, go vet, Staticcheck, and built-in tests. For other ecosystems, use maintained official recommendations. Don't install overlapping tools without a framework requirement.
+## Establish the boundaries
 
-Add CI only when requested or already conventional. Keep write-mode formatting out of `check`.
+1. Inspect the destination, applicable instructions, Git status, workspace configuration, and existing tooling. Preserve unrelated changes. Ask only about unresolved choices that affect the result or risk.
+2. Initialize Git when the destination is new and outside an existing repository. Keep services inside the existing repository's topology.
+3. Follow established project conventions. For a new stack, check current official documentation for maintained initializers, configuration, and supported options. If network access is unavailable, inspect installed versions and local help; report what you could not confirm.
+4. Run the official initializer when it fits. Keep the lockfile, remove unused demo code and dependencies, and add only the requested functionality. Add CI when requested or already conventional.
 
-Verify the symlink with:
+## Choose a coherent toolchain
 
-```sh
-test -f AGENTS.md
-test -L CLAUDE.md
-test "$(readlink CLAUDE.md)" = "AGENTS.md"
+Use these defaults when the project has no established choices. Confirm current configuration before installing tools; avoid overlapping tools without a framework requirement.
+
+| Ecosystem | Defaults |
+| --- | --- |
+| TypeScript | pnpm, strict TypeScript, ESLint, Prettier, framework-compatible test runner |
+| Python | uv, Ruff, strict Pyright, pytest |
+| Rust | Cargo, rustfmt, Clippy with warnings denied, built-in tests |
+| Go | Modules, gofmt, go vet, Staticcheck, built-in tests |
+| Other | Maintained official recommendations |
+
+## Define the verification contract
+
+Expose focused commands for formatting validation, linting, type checking, tests, and build wherever applicable. The aggregate `check` command runs **all** applicable checks, stops on failure, and leaves source files unchanged. Keep formatting fixes in a separate command. Configure Markdown formatting to disable automatic prose wrapping: set Prettier's `proseWrap` to `"never"`, or use the equivalent setting in the chosen formatter. Configure checks to fail on warnings where supported.
+
+For a TypeScript project with configured Prettier, ESLint, TypeScript, and Vitest:
+
+```json
+{
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm test && pnpm run build"
+  }
+}
 ```
 
-If symlinks aren't supported, report that limit instead of copying the file.
+Use the framework's build command when it provides one. Add meaningful tests for the scaffold's observable behavior; confirm tests are discovered and remove settings that pass with zero tests.
+
+## Document and hand off
+
+1. Write concise, repository-specific `AGENTS.md` guidance: purpose, layout, exact commands, non-obvious conventions, generated files, environment requirements, and external services. Distinguish verified commands from blocked ones.
+2. Create `CLAUDE.md` as a relative symlink to `AGENTS.md`. Preserve existing files and unexpected links; ask before replacing them. Verify the target with `test -L CLAUDE.md` and `test "$(readlink CLAUDE.md)" = AGENTS.md`. If symlinks are unsupported, report the limitation instead of copying the file.
+3. Run every required check, fix failures, then rerun the complete `check` command. Use verifying-end-to-end for applicable public-interface and backing-service verification.
+4. Report what works, the commands actually run, and remaining blockers. Missing dependencies, credentials, or services leave affected verification blocked.
+
+## Common mistakes
+
+A separate passing build does not make `check` complete. Include it in the aggregate command. A successful initializer or an empty test run does not establish working behavior. Preserve team guidance rather than replacing it to satisfy the symlink convention.
