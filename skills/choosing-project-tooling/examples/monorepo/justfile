@@ -1,0 +1,56 @@
+# Disposable local credentials. Never use this server or role for production.
+dev_database := "postgresql://monorepo_local:disposable-local-only@127.0.0.1:55434/monorepo_dev"
+
+default:
+    @just --list
+
+prerequisites:
+    mise install
+
+install:
+    go mod download
+
+setup: install db-up db-migrate
+
+db-up:
+    docker compose up -d --wait --wait-timeout 60 db
+
+# Application schema and River schema have separate migration owners.
+db-migrate:
+    goose -dir db/migrations postgres "${DATABASE_URL:-{{dev_database}}}" up
+    river migrate-up --database-url "${DATABASE_URL:-{{dev_database}}}"
+
+generate:
+    sqlc generate
+
+api:
+    DATABASE_URL="${DATABASE_URL:-{{dev_database}}}" go run ./cmd/api
+
+worker:
+    DATABASE_URL="${DATABASE_URL:-{{dev_database}}}" go run ./cmd/worker
+
+format:
+    gofmt -w cmd internal test
+
+# Non-mutating. PostgreSQL tests skip unless TEST_DATABASE_URL is supplied.
+check:
+    test -z "$(gofmt -l cmd internal test)"
+    sqlc diff
+    docker compose config --quiet
+    go vet ./...
+    go test ./...
+
+build:
+    go build -o bin/api ./cmd/api
+    go build -o bin/worker ./cmd/worker
+
+# Each test creates/migrates/drops its own database on this example's server.
+test-integration: db-up
+    TEST_DATABASE_URL='{{dev_database}}' go test ./... -count=1 -v
+
+test-race: db-up
+    TEST_DATABASE_URL='{{dev_database}}' go test -race ./... -count=1 -v
+
+# Retains the local database volume. Does not stop any other Compose project.
+stop:
+    docker compose down
