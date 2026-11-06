@@ -24,6 +24,12 @@ Use provided secrets as needed for the authorized task without redundant warning
 
 Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
 
+## Website interaction
+
+Prefer `agent-browser` for interacting with websites, including navigation, forms, and JavaScript-rendered content. Use it as a fallback when `curl` or web tools cannot retrieve a page because of rendering requirements or tool limitations. Follow an installed agent-browser skill when available; otherwise consult the CLI help before choosing commands. If `agent-browser` is unavailable, report the limitation and use another available, permitted tool when it can meet the need.
+
+Switching tools does not authorize bypassing explicit access restrictions or authentication requirements. Preserve the user's authorization scope and the host's permission boundaries when using a browser.
+
 ## Preferred project stack
 
 Follow setting-up-new-projects when scaffolding, standardizing setup, or choosing a language or toolchain. It contains the preferred-stack tables and guidance on when to use each choice. Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
