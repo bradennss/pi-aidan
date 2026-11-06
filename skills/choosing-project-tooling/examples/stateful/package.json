@@ -13,7 +13,7 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run src/tasks/service.test.ts",
+    "test": "vitest run src/tasks/service.test.ts test/migration.test.ts",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm test",
     "build": "next build",
     "db-generate": "drizzle-kit generate",

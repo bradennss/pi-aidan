@@ -6,3 +6,16 @@ node_modules
 *.tsbuildinfo
 test-results
 playwright-report
+.github
+.kamal
+.sops.yaml
+secrets
+infra
+ansible
+ops
+docs
+mise.toml
+justfile
+.actrc
+.recovery
+*.agekey

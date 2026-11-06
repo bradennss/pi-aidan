@@ -1,0 +1,22 @@
+[Unit]
+Description=Consistent PostgreSQL snapshot to encrypted off-host restic
+Requires=docker.service
+After=docker.service network-online.target
+OnFailure=stateful-alert.service
+
+[Service]
+Type=oneshot
+UMask=0077
+EnvironmentFile=/etc/stateful/backup.env
+RuntimeDirectory=stateful-backup
+RuntimeDirectoryMode=0700
+WorkingDirectory={{ backup_directory | default('/run/stateful-backup') }}
+TimeoutStartSec=1h
+ExecStart=/bin/sh -ec 'docker exec stateful-db pg_dump -U stateful -d stateful --format=custom --no-owner --no-privileges > tasks.dump; restic backup tasks.dump --tag stateful-postgres --host stateful-production; restic forget --tag stateful-postgres --host stateful-production --keep-daily 7 --keep-weekly 5 --keep-monthly 12 --prune'
+ExecStopPost=/bin/rm -f {{ backup_directory | default('/run/stateful-backup') }}/tasks.dump
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths={{ backup_directory | default('/run/stateful-backup') }} /var/cache/stateful-restic
+Environment=RESTIC_CACHE_DIR=/var/cache/stateful-restic

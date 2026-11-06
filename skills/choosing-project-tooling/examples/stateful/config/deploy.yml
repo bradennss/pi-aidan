@@ -1,0 +1,67 @@
+service: stateful
+image: <%= ENV.fetch("IMAGE_REPOSITORY") %>
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("DEPLOY_HOST") %>
+    proxy: false
+    options:
+      network-alias: app
+      memory: 768m
+      cpus: 2
+      pids-limit: 256
+registry:
+  server: ghcr.io
+  username: <%= ENV.fetch("REGISTRY_USER") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+env:
+  secret:
+    - DATABASE_URL
+builder:
+  arch: amd64
+ssh:
+  user: deploy
+  config: <%= ENV.fetch("SSH_CONFIG_FILE") %>
+  forward_agent: false
+retain_containers: 3
+deploy_timeout: 90
+accessories:
+  db:
+    image: postgres:18.6-trixie@sha256:bd5dfa494a5a259704365813dbfa5fa6b3e69be7348d43b547f540c730478583
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
+    env:
+      clear:
+        POSTGRES_USER: stateful
+        POSTGRES_DB: stateful
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql
+    options:
+      memory: 2g
+      cpus: 2
+      pids-limit: 256
+      health-cmd: pg_isready -U stateful -d stateful
+      health-interval: 5s
+      health-timeout: 3s
+      health-retries: 12
+  gateway:
+    image: caddy:2.11.9-alpine@sha256:0bbb055bda6793c999bde78b1b5ce3e89f829fb031af2cf50056ea1246559fee
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
+    env:
+      secret:
+        - BASIC_AUTH_USER
+        - BASIC_AUTH_HASH
+    files:
+      - config/Caddyfile:/etc/caddy/Caddyfile:ro
+    proxy:
+      ssl: true
+      host: <%= ENV.fetch("APP_DOMAIN") %>
+      app_port: 8080
+      healthcheck:
+        path: /up
+    options:
+      memory: 128m
+      cpus: 1
+      pids-limit: 128

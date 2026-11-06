@@ -1,7 +1,7 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { database } from "../db/client";
-import { tasks, type Task } from "../db/schema";
+import { tasks, taskColumns, type Task } from "../db/schema";
 
 export class TaskInputError extends Error {}
 
@@ -15,12 +15,12 @@ export async function createTask(title: string): Promise<Task> {
   const [task] = await database()
     .db.insert(tasks)
     .values({ title: trimmed })
-    .returning();
+    .returning(taskColumns);
   return task;
 }
 
 export async function listTasks(): Promise<Task[]> {
-  return database().db.select().from(tasks).orderBy(asc(tasks.id));
+  return database().db.select(taskColumns).from(tasks).orderBy(asc(tasks.id));
 }
 
 export async function setTaskCompleted(
@@ -39,7 +39,7 @@ export async function setTaskCompleted(
     .db.update(tasks)
     .set({ completed })
     .where(eq(tasks.id, id))
-    .returning();
+    .returning(taskColumns);
   if (!task) throw new TaskInputError("Task not found. Reload and try again.");
   return task;
 }

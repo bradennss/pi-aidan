@@ -9,6 +9,9 @@ export default defineConfig([
   prettier,
   globalIgnores([
     ".next/**",
+    "ansible/collections/**",
+    "infra/.terraform/**",
+    ".recovery/**",
     "next-env.d.ts",
     "drizzle/meta/**",
     "test-results/**",

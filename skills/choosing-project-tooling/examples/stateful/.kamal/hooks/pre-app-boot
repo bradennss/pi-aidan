@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# This hook executes inside Kamal's deployment lock, after the immutable image pull.
+test "$KAMAL_LOCK" = true
+test "$KAMAL_SERVICE" = stateful
+test "${KAMAL_ROLES:-web}" = web
+test "$KAMAL_HOSTS" = "$DEPLOY_HOST"
+printf '%s' "$KAMAL_VERSION" | grep -Eq '^[0-9a-f]{40}$'
+printf '%s' "$IMAGE_REPOSITORY" | grep -Eq '^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$'
+ssh -F "$SSH_CONFIG_FILE" -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "deploy@$DEPLOY_HOST" sh -s -- "ghcr.io/$IMAGE_REPOSITORY:$KAMAL_VERSION" <<'REMOTE'
+set -eu
+image=$1
+docker image inspect "$image" >/dev/null
+writers=$(docker ps --filter label=service=stateful --filter label=role=web -q)
+if [ -n "$writers" ]; then
+  docker stop --time 30 $writers >/dev/null
+fi
+test -z "$(docker ps --filter label=service=stateful --filter label=role=web -q)"
+docker run --pull=never --rm --network kamal --env-file /etc/stateful/migration.env --memory 512m --cpus 1 --pids-limit 128 "$image" node migrate.mjs
+REMOTE
