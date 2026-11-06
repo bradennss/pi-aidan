@@ -1,0 +1,98 @@
+name: minecraft-local
+
+services:
+  server:
+    image: itzg/minecraft-server:2026.10.1-java25@sha256:d12aed7e35981dfe259b60fbfee77d23a19b5898a7a31dca298d18b47b7b5776
+    # Raw file values cannot inherit EULA acceptance from the invoking shell.
+    env_file:
+      - path: .env
+        required: false
+        format: raw
+    environment:
+      TYPE: VANILLA
+      VERSION: "26.3"
+      INIT_MEMORY: 1G
+      MAX_MEMORY: 4G
+      ONLINE_MODE: "TRUE"
+      ENABLE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      EXISTING_WHITELIST_FILE: SYNCHRONIZE
+      ENABLE_RCON: "TRUE"
+      RCON_PORT: "25575"
+      RCON_PASSWORD_FILE: /run/secrets/rcon-password
+      BROADCAST_RCON_TO_OPS: "FALSE"
+      ENABLE_QUERY: "FALSE"
+      MAX_PLAYERS: "10"
+      MOTD: Local persistent world
+    ports:
+      - "127.0.0.1:25565:25565/tcp"
+    volumes:
+      - type: bind
+        source: ./.local/data
+        target: /data
+        bind:
+          create_host_path: false
+    secrets:
+      - rcon-password
+    networks:
+      - minecraft
+    mem_limit: 6g
+    cpus: 2
+    stop_grace_period: 2m
+    restart: "no"
+
+  backup:
+    image: itzg/mc-backup:2026.11.0@sha256:a68dee00b2b56bd443bee7d310e5fc49e66682c0d1f4040cda6efa52d8c51df8
+    profiles: [backup]
+    command: [now]
+    environment:
+      BACKUP_METHOD: restic
+      BACKUP_NAME: minecraft-data
+      RESTIC_HOST: minecraft-local
+      RESTIC_ADDITIONAL_TAGS: minecraft
+      RESTIC_REPOSITORY: /backups
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      RCON_HOST: server
+      RCON_PORT: "25575"
+      RCON_PASSWORD_FILE: /run/secrets/rcon-password
+      RCON_RETRIES: "2"
+      RCON_RETRY_INTERVAL: 5s
+      ENABLE_SAVE_ALL: "true"
+      ENABLE_SYNC: "true"
+      SRC_DIR: /data
+      INCLUDES: /data
+      # Retention is deliberate/manual; a rehearsal must not delete older snapshots.
+      PRUNE_BACKUPS_DAYS: "0"
+      # Upstream catches capture errors. Propagate status only AFTER native save-on.
+      POST_BACKUP_SCRIPT: 'exit "$$1"'
+    volumes:
+      - type: bind
+        source: ./.local/data
+        target: /data
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.local/restic
+        target: /backups
+        bind:
+          create_host_path: false
+    secrets:
+      - rcon-password
+      - restic-password
+    networks:
+      - minecraft
+    mem_limit: 1g
+    cpus: 1
+    restart: "no"
+
+networks:
+  # Project-scoped bridge, with outbound access for authenticated identities.
+  # Only the game port is published. RCON never has a host port.
+  minecraft: {}
+
+secrets:
+  rcon-password:
+    file: ./.secrets/rcon-password
+  restic-password:
+    file: ./.secrets/restic-password

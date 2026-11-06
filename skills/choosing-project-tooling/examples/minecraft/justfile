@@ -1,0 +1,73 @@
+compose := "docker compose --env-file /dev/null --file compose.yml"
+
+# Never use dotenv-load: an inherited EULA value is not operator acceptance.
+default:
+    @just --list
+
+# Schema/format checks only. No game, credentials, repository, or Docker daemon needed.
+check:
+    just --fmt --check
+    mise fmt --check
+    {{ compose }} --profile backup config --quiet
+
+format:
+    just --fmt
+    mise fmt
+
+# The operator must edit the local file after personally accepting the EULA.
+start:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f .env ]] || [[ $(grep -c '^EULA=' .env) != 1 ]] || ! grep -qx 'EULA=TRUE' .env; then
+      echo 'Start refused: personally accept the Minecraft EULA, then set EULA=TRUE in .env.' >&2
+      exit 1
+    fi
+    if [[ $(grep -c '^WHITELIST=' .env) != 1 ]] || ! grep -Eq '^WHITELIST=[A-Za-z0-9_]{3,16}(,[A-Za-z0-9_]{3,16})*$' .env; then
+      echo 'Start refused: set WHITELIST in .env to comma-separated licensed Java profile names.' >&2
+      exit 1
+    fi
+    test -s .secrets/rcon-password
+    test -s .secrets/restic-password
+    test -d .local/data
+    test -d .local/restic
+    {{ compose }} up --detach --wait --wait-timeout 180 server
+
+# Graceful stop retains data and repository. Never use down --volumes for recovery.
+stop:
+    {{ compose }} stop server
+
+status:
+    {{ compose }} ps --all
+
+# One-shot native save-off/save-all flush/restic/save-on, with capture status propagated.
+backup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -e .local/data/.paused ]]; then
+      echo 'Backup refused: .paused would bypass native RCON save coordination.' >&2
+      exit 1
+    fi
+    test -s .secrets/rcon-password
+    test -s .secrets/restic-password
+    {{ compose }} run --rm --no-deps -T backup
+
+# TARGET is a fresh child name under restores/, never an arbitrary path.
+[positional-arguments]
+restore TARGET:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="$1"
+    if [[ ! "$name" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]]; then
+      echo 'Restore refused: TARGET must be a name (1-64 letters, digits, underscores or hyphens).' >&2
+      exit 1
+    fi
+    if [[ -L restores || -L .local || -L .local/data ]] || [[ restores -ef .local/data ]]; then
+      echo 'Restore refused: storage roots must be separate directories, not symlinks or active-world aliases.' >&2
+      exit 1
+    fi
+    umask 077
+    mkdir -p restores
+    # Atomic mkdir refuses existing targets, including dangling symlinks.
+    target="$PWD/restores/$name"
+    mkdir -- "$target"
+    restic --repo .local/restic --password-file .secrets/restic-password restore latest --host minecraft-local --tag minecraft-data,minecraft --path /data --target "$target" --verify
