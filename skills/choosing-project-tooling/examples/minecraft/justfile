@@ -8,6 +8,7 @@ default:
 check:
     just --fmt --check
     mise fmt --check
+    actionlint .github/workflows/*.yml
     {{ compose }} --profile backup config --quiet
 
 format:
@@ -71,3 +72,86 @@ restore TARGET:
     target="$PWD/restores/$name"
     mkdir -- "$target"
     restic --repo .local/restic --password-file .secrets/restic-password restore latest --host minecraft-local --tag minecraft-data,minecraft --path /data --target "$target" --verify
+
+infra-validate:
+    tofu -chdir=infra fmt -check
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra init -backend=false -input=false -lockfile=readonly
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra validate
+
+# Authorized read-only production plan, current state and both identities required.
+infra-plan:
+    sops exec-env secrets/state.enc.yaml 'sops exec-env secrets/infra.enc.yaml "tofu -chdir=infra init -input=false -lockfile=readonly && tofu -chdir=infra plan -input=false"'
+
+verify-state:
+    jq -e 'keys == ["encrypted_data", "encryption_version", "lineage", "meta", "serial"] and (.encrypted_data | type == "string" and length > 0)' infra/production.tfstate >/dev/null
+    tofu -chdir=infra state pull >/dev/null
+
+# Never rebase/reapply on rejected push. Keep verified ciphertext for reconciliation.
+persist-state: verify-state
+    mkdir -p .recovery
+    cp infra/production.tfstate .recovery/production.tfstate
+    git add -- infra/production.tfstate
+    if ! git diff --cached --quiet -- infra/production.tfstate; then \
+        git -c user.name='Infrastructure state' -c user.email='infra@users.noreply.github.com' commit --only -m 'Persist encrypted infrastructure state [skip ci]' -- infra/production.tfstate && \
+        git push origin HEAD:main; \
+    fi
+
+install-host:
+    cd ansible && ansible-galaxy collection install -r requirements.yml -p collections
+
+host-check:
+    cd ansible && ansible-playbook --syntax-check playbook.yml
+
+ci-test:
+    act push -W .github/workflows/check.yml -j check --secret-file /dev/null --var-file /dev/null --env-file /dev/null --input-file /dev/null
+
+# Inside SOPS exec-env with verified SSH agent. Failure retains lock/masks.
+[positional-arguments]
+deploy GAME_VERSION SERVER_IMAGE MODE="upgrade":
+    #!/usr/bin/env bash
+    # shellcheck disable=SC2016 # Quoted expressions execute on the remote host.
+    set -euo pipefail
+    test "${DEPLOY_AUTHORIZED:-}" = true
+    export GAME_VERSION="$1" SERVER_IMAGE="$2"
+    mode="$3"
+    [[ "$mode" = install || "$mode" = upgrade ]]
+    [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+    remote=(ssh -F "$SSH_CONFIG_FILE" "deploy@$DEPLOY_HOST")
+    "${remote[@]}" 'test "$(sudo grep -c "^EULA=" /etc/minecraft/eula.env)" = 1 && sudo grep -qx EULA=TRUE /etc/minecraft/eula.env'
+    test "${KAMAL_LOCK:-false}" = false
+    "${remote[@]}" 'sudo test -d /srv/minecraft/worlds/primary && sudo test ! -L /srv/minecraft && sudo test ! -L /srv/minecraft/worlds && sudo test ! -L /srv/minecraft/worlds/primary'
+    kamal lock acquire --hosts "$DEPLOY_HOST" --message 'Deliberate Minecraft lifecycle; retain lock on failure'
+    export KAMAL_LOCK=true
+    timer=$("${remote[@]}" 'systemctl is-active minecraft-backup.timer || true')
+    [[ "$timer" = active || "$timer" = inactive ]]
+    "${remote[@]}" 'sudo systemctl stop minecraft-backup.timer && sudo systemctl mask minecraft-backup.timer && test "$(systemctl show -p LoadState --value minecraft-backup.timer)" = masked'
+    if [[ "$mode" = upgrade ]]; then
+      "${remote[@]}" 'docker inspect minecraft-game | jq -e '\''.[0] | .Config.Labels.service == "minecraft-game" and ([.Mounts[] | select(.Destination == "/data") | .Source] == ["/srv/minecraft/worlds/primary"])'\'' >/dev/null && test "$(docker ps -aq --filter label=service=minecraft-game | wc -l)" -eq 1'
+      "${remote[@]}" 'ids=$(docker ps -q) && test -n "$ids" && docker inspect $ids | jq -e '\''[.[] | select(any(.Mounts[]?; .Source as $s | $s == "/srv/minecraft/worlds/primary" or ($s | startswith("/srv/minecraft/worlds/primary/")) or (["/", "/srv", "/srv/minecraft", "/srv/minecraft/worlds"] | index($s)))) | .Name] == ["/minecraft-game"]'\'' >/dev/null'
+      "${remote[@]}" 'sudo systemctl start minecraft-backup.service && test "$(systemctl show -p Result --value minecraft-backup.service)" = success'
+    else
+      "${remote[@]}" 'test -z "$(docker ps -aq --filter label=service=minecraft-game)" && test -z "$(docker ps -aq --filter name=^/minecraft-game$)" && first=$(sudo find /srv/minecraft/worlds/primary -mindepth 1 -print -quit) && test -z "$first"'
+    fi
+    "${remote[@]}" 'sudo systemctl mask minecraft-backup.service && test "$(systemctl show -p LoadState --value minecraft-backup.service)" = masked && test "$(systemctl show -p ActiveState --value minecraft-backup.service)" = inactive'
+    if [[ "$mode" = upgrade ]]; then
+      "${remote[@]}" 'sudo systemd-run --wait --pipe --collect -p EnvironmentFile=/etc/minecraft/backup.env restic tag --add keep --host minecraft-production --tag minecraft-data,minecraft --path /data latest'
+      # Record only nonsecret identity; snapshot ID is in backup journal.
+      "${remote[@]}" 'docker inspect minecraft-game | jq '\''.[0] | {image: .Config.Image, game: [.Config.Env[] | select(startswith("VERSION="))]}'\'''
+      kamal accessory stop game --hosts "$DEPLOY_HOST"
+      "${remote[@]}" 'docker inspect minecraft-game | jq -e '\''.[0].State | .Running == false and .OOMKilled == false and .ExitCode == 0'\'' >/dev/null'
+    fi
+    # Inspect all running mounts, not just service labels. No empty xargs inspect.
+    "${remote[@]}" 'ids=$(docker ps -q) && if test -n "$ids"; then docker inspect $ids | jq -e '\''[.[] | .Mounts[]? | .Source as $s | select($s == "/srv/minecraft/worlds/primary" or ($s | startswith("/srv/minecraft/worlds/primary/")) or (["/", "/srv", "/srv/minecraft", "/srv/minecraft/worlds"] | index($s)))] | length == 0'\'' >/dev/null; fi'
+    if [[ "$mode" = upgrade ]]; then
+      # boot skips ANY container with the service label, even renamed/stopped.
+      kamal accessory remove_container game --hosts "$DEPLOY_HOST"
+      "${remote[@]}" 'test -z "$(docker ps -aq --filter label=service=minecraft-game)"'
+    fi
+    kamal accessory boot game --hosts "$DEPLOY_HOST"
+    kamal accessory exec game --hosts "$DEPLOY_HOST" --reuse 'mc-monitor status --host 127.0.0.1 --port 25565 --timeout 5s --retry-limit 30 --retry-interval 5s'
+    "${remote[@]}" 'sudo systemctl unmask minecraft-backup.service minecraft-backup.timer'
+    if [[ "$timer" = active ]]; then
+      "${remote[@]}" 'sudo systemctl start minecraft-backup.timer'
+    fi
+    unset KAMAL_LOCK
+    kamal lock release --hosts "$DEPLOY_HOST"

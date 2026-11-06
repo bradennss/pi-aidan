@@ -1,0 +1,2 @@
+# No custom image is built. Deny all context if Docker is invoked accidentally.
+**

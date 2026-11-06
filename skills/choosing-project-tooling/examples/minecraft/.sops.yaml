@@ -1,0 +1,10 @@
+# Set real, separate recipients before creating encrypted files. Empty rules fail closed.
+creation_rules:
+  - path_regex: secrets/state\.enc\.yaml$
+    age: ""
+  - path_regex: secrets/infra\.enc\.yaml$
+    age: ""
+  - path_regex: secrets/host\.enc\.yaml$
+    age: ""
+  - path_regex: secrets/deploy\.enc\.yaml$
+    age: ""

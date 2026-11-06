@@ -6,3 +6,14 @@
 restores/
 *.log
 .DS_Store
+
+*.agekey
+secrets/*.plain.*
+infra/.terraform/
+infra/*.tfplan
+infra/*.tfstate*
+!infra/production.tfstate
+infra/crash.*
+ansible/inventory.generated.json
+ansible/collections/
+.recovery/

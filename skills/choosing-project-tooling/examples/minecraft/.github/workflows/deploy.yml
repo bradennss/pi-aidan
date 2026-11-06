@@ -1,0 +1,75 @@
+name: Deliberate Minecraft deployment
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact current main config/state commit
+        required: true
+      game_version:
+        description: Exact vanilla release (verify image Java compatibility)
+        required: true
+      server_image:
+        description: Full itzg/minecraft-server release-java tag@sha256 reference
+        required: true
+      mode:
+        type: choice
+        options: [upgrade, install]
+        default: upgrade
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: production-game
+  cancel-in-progress: false
+jobs:
+  prerequisites:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require private repository and dedicated stable-egress runner
+        env:
+          RUNNER: ${{ vars.PRODUCTION_RUNNER }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: test "$PRIVATE" = true && test -n "$RUNNER"
+  deploy:
+    needs: prerequisites
+    runs-on: ${{ vars.PRODUCTION_RUNNER }}
+    environment: production-game
+    env:
+      SOPS_AGE_KEY: ${{ secrets.DEPLOY_AGE_KEY }}
+      REVISION: ${{ inputs.revision }}
+      GAME_VERSION: ${{ inputs.game_version }}
+      SERVER_IMAGE: ${{ inputs.server_image }}
+      MODE: ${{ inputs.mode }}
+      DEPLOY_AUTHORIZED: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
+      - name: Reject stale/retried requests
+        run: |
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$REVISION" = "$GITHUB_SHA"
+          test "$REVISION" = "$(git rev-parse HEAD)"
+          test "$REVISION" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+      - name: Deliberately deploy exact upstream image, never build or publish
+        shell: bash
+        run: |
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k >/dev/null; rm -f "$RUNNER_TEMP/known_hosts" "$RUNNER_TEMP/ssh_config"' EXIT
+          export SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/known_hosts"
+          export SSH_CONFIG_FILE="$RUNNER_TEMP/ssh_config"
+          # shellcheck disable=SC2016 # Expand only inside the decrypted child environment.
+          sops exec-env secrets/deploy.enc.yaml 'bash -eu -o pipefail -c '\''
+            printf "%s\n" "$SSH_KNOWN_HOSTS" > "$SSH_KNOWN_HOSTS_FILE"
+            chmod 600 "$SSH_KNOWN_HOSTS_FILE"
+            printf "Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile %s\n" "$SSH_KNOWN_HOSTS_FILE" > "$SSH_CONFIG_FILE"
+            chmod 600 "$SSH_CONFIG_FILE"
+            ssh-add - <<< "$DEPLOY_SSH_KEY"
+            just deploy "$GAME_VERSION" "$SERVER_IMAGE" "$MODE"
+          '\'''

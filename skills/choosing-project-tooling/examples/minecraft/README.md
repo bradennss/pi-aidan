@@ -1,6 +1,6 @@
-# Local persistent Minecraft server
+# Persistent Minecraft server
 
-A self-contained vanilla Java Edition server with persistent storage and Minecraft-aware, encrypted restic backups. Use this directory independently: it has no application package, custom image, or parent-repository runtime dependency. Image digests and the exact game version live in `compose.yml`.
+A self-contained vanilla Java Edition server with persistent storage and Minecraft-aware encrypted backups. Use this directory independently: it has no application package, custom image, or sibling runtime dependency. Local game/image pins live in `compose.yml`; production deployment deliberately selects an exact vanilla version and upstream image digest. [Production operations](docs/operations.md) covers one Debian 13 OVHcloud US host, DNS-only Cloudflare, SOPS/age, R2, scheduled backups, protected administration, and stop-before-start Kamal accessory deployment.
 
 ## Prerequisites
 
@@ -39,13 +39,13 @@ Connect the real client to `127.0.0.1:25565`. Only that TCP game port is publish
 
 ## Verify and contribute
 
-Run `mise exec -- just check` for non-mutating just/TOML formatting and Compose schema validation. It needs no `.env`, credentials, repository, game server, or Docker daemon. `mise exec -- just format` formats the justfile and mise configuration. Review YAML/Markdown formatting directly; do not add a Node/Python application solely to format this reference.
+Run `mise exec -- just check` for non-mutating just/TOML formatting, workflow syntax, and local Compose schema validation. It needs no `.env`, credentials, game server, or Docker daemon. Also run `just infra-validate`, `just install-host && just host-check`, and local-safe `just ci-test` through mise for deployment configuration changes. `just format` formats just/TOML. Review YAML/Markdown directly; no application package is needed for tooling. [AGENTS.md](AGENTS.md) lists immediate contributor commands and safety constraints.
 
 Use the [manual game-client procedure](docs/recovery.md#verify-world-persistence-and-backup) before claiming persistence or successful recovery. Without explicit EULA acceptance and licensed client access, record the entire game lifecycle as **blocked/unverified**, including the initial failing smoke. A schema check, no-EULA rejection, filesystem fixture, or log message is not Minecraft RED/GREEN evidence. No maintained container test suite is needed.
 
 For upgrades, take and verify a coordinated backup while the old server is ready, then stop gracefully and deliberately update the game version and upstream image digest together. Keep the old image/config and matching snapshot for rollback: older servers may not read upgraded worlds. Recheck upstream save coordination and one-shot failure semantics. The tiny native post-backup status hook is explained in the recovery guide.
 
-This is local-only configuration, not production deployment or off-host disaster recovery. A later authorized production phase must supply Debian 13 host configuration, encrypted SOPS/age credentials, off-host R2 storage, scheduling/alerting, and stop-before-start deployment ownership. These files create none of those resources. The same persistent-volume, independent-key, workload-aware capture, and isolated-restore practices apply to an AI assistant installation; its consistency boundary must match its own storage engine.
+Local commands above create no cloud resources. Production files are conditional operator configuration, not a deployed or runtime-verified installation. Follow [operations](docs/operations.md) for account/runner/bootstrap/deployment prerequisites, [secrets](docs/secrets.md#production-sops-and-age-schema) for separate identities, and [recovery](docs/recovery.md#recover-a-failed-production-upgrade) for matching-image isolated recovery and infrastructure reconciliation. Actual game/client/upgrade/save-consistency checks remain blocked without explicit authorization. The same independent-key, persistent-volume, workload-aware capture, and isolated-restore practices apply to an AI assistant installation, with consistency matched to its own storage engine.
 
 ## Upstream references
 

@@ -1,0 +1,25 @@
+name: Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths-ignore: [infra/production.tfstate]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # act's post-action PATH can omit its image-provided Node runtime.
+      - name: Keep the runner action runtime available
+        run: dirname "$(command -v node)" >> "$GITHUB_PATH"
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
+      - run: just check
+      - run: just infra-validate
+      - run: just install-host && just host-check
+      - run: actionlint .github/workflows/*.yml

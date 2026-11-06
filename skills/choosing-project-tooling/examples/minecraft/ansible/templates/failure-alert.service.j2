@@ -1,0 +1,4 @@
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/minecraft-alert.env
+ExecStart=/bin/sh -c 'curl --fail --silent --show-error --max-time 15 -X POST --data "text=Minecraft host requires attention" "$$ALERT_WEBHOOK" >/dev/null'

@@ -1,0 +1,36 @@
+name: minecraft-production-backup
+services:
+  backup:
+    image: itzg/mc-backup:2026.11.0@sha256:a68dee00b2b56bd443bee7d310e5fc49e66682c0d1f4040cda6efa52d8c51df8
+    command: [now]
+    # Root-only native env file is consumed by Docker, never a shell loader.
+    env_file: /etc/minecraft/backup.env
+    environment:
+      BACKUP_METHOD: restic
+      BACKUP_NAME: minecraft-data
+      RESTIC_HOST: minecraft-production
+      RESTIC_ADDITIONAL_TAGS: minecraft
+      RESTIC_PASSWORD_FILE: /run/secrets/restic-password
+      RCON_HOST: minecraft-game
+      RCON_PORT: "25575"
+      RCON_PASSWORD_FILE: /run/secrets/rcon-password
+      RCON_RETRIES: "2"
+      RCON_RETRY_INTERVAL: 5s
+      ENABLE_SAVE_ALL: "true"
+      ENABLE_SYNC: "true"
+      SRC_DIR: /data
+      INCLUDES: /data
+      # Retention runs separately ONLY after verified successful capture/save-on.
+      PRUNE_BACKUPS_DAYS: "0"
+      POST_BACKUP_SCRIPT: 'exit "$$1"'
+    volumes:
+      - /srv/minecraft/worlds/primary:/data:ro
+      - /etc/minecraft/rcon-password:/run/secrets/rcon-password:ro
+      - /etc/minecraft/restic-password:/run/secrets/restic-password:ro
+    networks: [kamal]
+    mem_limit: 1g
+    cpus: 1
+    restart: "no"
+networks:
+  kamal:
+    external: true

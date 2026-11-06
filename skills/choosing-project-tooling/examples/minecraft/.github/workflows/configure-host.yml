@@ -1,0 +1,64 @@
+name: Configure host
+on:
+  workflow_dispatch:
+    inputs:
+      disable_bootstrap:
+        description: Verify deploy access, then disable bootstrap/root/password login
+        type: boolean
+        default: false
+      reboot:
+        description: Authorize a maintenance reboot
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: production-game
+  cancel-in-progress: false
+jobs:
+  prerequisites:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require configured stable-egress production runner
+        env:
+          RUNNER: ${{ vars.PRODUCTION_RUNNER }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: test "$PRIVATE" = true && test -n "$RUNNER"
+  configure:
+    needs: prerequisites
+    runs-on: ${{ vars.PRODUCTION_RUNNER }}
+    environment: production-host
+    env:
+      SOPS_AGE_KEY: ${{ secrets.HOST_AGE_KEY }}
+      DISABLE_BOOTSTRAP: ${{ inputs.disable_bootstrap }}
+      REBOOT: ${{ inputs.reboot }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
+      - run: just install-host && just host-check
+      - name: Configure host with verified host key and ephemeral SSH identity
+        shell: bash
+        run: |
+          eval "$(ssh-agent -s)"
+          trap 'ssh-agent -k >/dev/null; rm -f "$RUNNER_TEMP/known_hosts" "$RUNNER_TEMP/ssh_config" ansible/inventory.generated.json' EXIT
+          export SSH_KNOWN_HOSTS_FILE="$RUNNER_TEMP/known_hosts"
+          export SSH_CONFIG_FILE="$RUNNER_TEMP/ssh_config"
+          # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
+          sops exec-env secrets/host.enc.yaml 'bash -eu -o pipefail -c '\''
+            printf "%s\n" "$SSH_KNOWN_HOSTS" > "$SSH_KNOWN_HOSTS_FILE"
+            chmod 600 "$SSH_KNOWN_HOSTS_FILE"
+            printf "Host *\n  StrictHostKeyChecking yes\n  UserKnownHostsFile %s\n" "$SSH_KNOWN_HOSTS_FILE" > "$SSH_CONFIG_FILE"
+            chmod 600 "$SSH_CONFIG_FILE"
+            ssh-add - <<< "$HOST_SSH_KEY"
+            jq -n --arg host "$DEPLOY_HOST" --arg user "$BOOTSTRAP_USER" "{all:{hosts:{minecraft:{ansible_host:\$host,ansible_user:\$user}}}}" > ansible/inventory.generated.json
+            export ANSIBLE_SSH_COMMON_ARGS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE"
+            export SSH_KNOWN_HOSTS="$SSH_KNOWN_HOSTS_FILE"
+            cd ansible
+            ansible-playbook -i inventory.generated.json playbook.yml --extra-vars "{\"disable_bootstrap\":$DISABLE_BOOTSTRAP,\"reboot_authorized\":$REBOOT}"
+          '\'''
