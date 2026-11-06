@@ -26,11 +26,7 @@ Test meaningful behavior and plausible regressions, including failure cases warr
 
 Use verifying-end-to-end when lower-level tests leave changed executable or rendered behavior unproven at a user or integration boundary. Prefer existing checks and direct build, validation, or smoke commands for routine configuration, Docker, and packaging changes. Choose failure and recovery checks for access control, persistent data, infrastructure, and releases according to the risk introduced.
 
-## Documentation and communication
-
-Maintain documentation when required or needed to use, operate, or maintain the system; prefer existing documents. Keep transient findings, approvals, progress, and check results in the tracker or response unless a required record serves an operational or audit need. Write for readers unfamiliar with the editing conversation. Include history only when it helps them act correctly.
-
-Follow the [Google developer documentation style guide](https://developers.google.com/style/) for documentation and explanatory comments. Use plain, inclusive language, active voice, second person, sentence-case headings, numbered procedures, and descriptive links. Preserve exact identifiers and quotations; consult the guide when uncertain.
+## Communication
 
 Lead with the answer or most useful finding. Use concise, specific prose and relevant paths, symbols, commands, and errors. Give progress updates for consequential findings, decisions, or blockers, without narrating routine tools. Handoffs state changes, observed verification, and uncertainty; reviews lead with actionable findings. Explain objections directly.
 
