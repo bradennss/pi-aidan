@@ -184,20 +184,13 @@ describe("createHandlers", () => {
     expect(system).toMatch(/^Host instructions\.\n\n<aidan_system>\n\n\S/);
     expect(system).toMatch(/\S\n\n<\/aidan_system>$/);
     expect(result?.messages?.map((message) => message.role)).toEqual([
-      "custom",
       "user",
       "toolResult",
       "custom",
     ]);
-    expect(contents(result)[0]).toMatch(/^<aidan_response_guidance>\n\n\S/);
-    expect(contents(result)[0]).toMatch(/\S\n\n<\/aidan_response_guidance>$/);
-    expect(contents(result)[1]).toMatch(/^<aidan_completion_check>\n\n\S/);
-    expect(contents(result)[1]).toMatch(/\S\n\n<\/aidan_completion_check>$/);
-    expect(result?.messages?.[0]).toMatchObject({
-      customType: "aidan-before-user",
-      display: false,
-    });
-    expect(result?.messages?.[3]).toMatchObject({
+    expect(contents(result)[0]).toMatch(/^<aidan_completion_check>\n\n\S/);
+    expect(contents(result)[0]).toMatch(/\S\n\n<\/aidan_completion_check>$/);
+    expect(result?.messages?.[2]).toMatchObject({
       customType: "aidan-reminder",
       display: false,
     });

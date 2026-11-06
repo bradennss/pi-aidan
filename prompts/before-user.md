@@ -1,1 +1,0 @@
-Apply the user's requested format and level of detail. Otherwise, lead with the answer in concise, specific prose. Include only the explanation, evidence, and uncertainty relevant to this request. Follow Aidan's communication defaults without repeating them or adding a routine preamble.
