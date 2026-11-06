@@ -4,7 +4,7 @@ A dependency-free TypeScript library that converts duration strings to integer m
 
 ## Try it locally
 
-Install [mise](https://mise.jdx.dev/getting-started.html), then run these commands from this directory. The tasks need a POSIX shell; the isolated consumer task also needs Bash and registry access for TypeScript.
+Install [mise](https://mise.jdx.dev/getting-started.html), then run these commands from this directory. The tasks need a POSIX shell; the isolated consumer task also needs Bash and registry access for TypeScript. Local workflow checks need Docker.
 
 ```sh
 mise trust
@@ -50,13 +50,21 @@ The package is ESM only, with explicit import and declaration exports. There is 
 
 `src/index.ts` contains the parser; `src/index.test.ts` covers its contract. `test/consumer/` is copied outside the repository and imports only the tarball's public package name. It has its own compiler installation, with no source aliases or parent `node_modules` resolution. `tsdown.config.ts` builds ESM and declarations into `dist/`.
 
-- `just check`: non-mutating formatting, ESLint, TypeScript, and Vitest checks.
+- `just check`: non-mutating formatting, ESLint, TypeScript, parser and release-guard tests, and workflow validation with actionlint.
 - `just format`: apply formatting independently of checks.
 - `just build`: clean tsdown build.
-- `just pack`: build, pack to a fixed artifact path, then run publint and ATTW against that artifact. ATTW uses its ESM-only profile because CommonJS is outside the contract.
-- `just test-consumer`: pack and verify the isolated TypeScript-to-Node consumer.
+- `just pack`: build and pack to `.artifacts/package.tgz`.
+- `just test-consumer`: pack, check the tarball with strict publint and ATTW, then verify the isolated TypeScript-to-Node consumer. ATTW uses its ESM-only profile because CommonJS is outside the contract.
+- `just test-packed`: check and consume the existing tarball without rebuilding it.
+- `just ci-test`: run only the unprivileged check workflow locally with act and Docker.
+- `pnpm changeset`: describe a user-visible change and select its semantic version bump.
+- `pnpm version:prepare`: consume changesets into the package version and changelog, and update the lockfile for review.
 
-Use `mise exec --` before these tasks if mise is not activated in your shell. If a build or consumer check fails, fix it and rerun the task; do not reuse a failing artifact. Generated output is ignored by Git. CI, Changesets, and publication are outside this example's current scope.
+Use `mise exec --` before these tasks if mise is not activated in your shell. If a build or consumer check fails, fix it and rerun the task; do not reuse a failing artifact. Generated output is ignored by Git. PRs and pushes to `main` run the same checks and actual packed consumer without registry credentials, environment secrets, or OIDC permissions. Dependabot proposes pnpm and Actions updates.
+
+The act runner uses a digest-pinned `catthehacker/ubuntu` Ubuntu 24.04 image with the Node runtime required by the pinned actions. `.actrc` selects linux/amd64, including on Apple Silicon. Pull that exact image once with `docker pull --platform linux/amd64 ghcr.io/catthehacker/ubuntu@sha256:62d572b92f9f32d3427b6d220ad1f9dca9c7b6ffad37d295425037dbff78abaf`, then run `just ci-test`. It selects only `check.yml`'s check job and reads no local secret, variable, input, or environment files. Run it from a shell without production credentials. act does not establish GitHub permissions, concurrency, environment approvals, npm identity, or provenance.
+
+Publication is a separate, explicitly dispatched workflow for the current default-branch revision. It retains the verified tarball and publishes those same bytes through npm trusted publishing. This private placeholder deliberately fails release guards. Version preparation and workflow authoring grant no publication approval. See [release operations](docs/releasing.md) for owned-name setup, first-publication bootstrap, protected-environment prerequisites, and immutable-version recovery.
 
 ## Tooling references
 

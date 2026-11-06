@@ -23,6 +23,7 @@
   "sideEffects": false,
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/cli": "3.0.3",
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.6",
     "eslint": "10.14.0",
@@ -32,5 +33,9 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
     "vitest": "5.1.0"
+  },
+  "scripts": {
+    "changeset": "changeset",
+    "version:prepare": "changeset version && pnpm install --lockfile-only"
   }
 }
