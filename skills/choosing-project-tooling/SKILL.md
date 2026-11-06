@@ -7,12 +7,6 @@ description: Use when selecting or evaluating languages, frameworks, developer t
 
 Use these opinionated defaults for open choices. Inspect existing conventions first; preserve them and obtain approval for consequential migrations. Fit the setup to the workload and configure the selected pieces completely for the agreed scope. For a narrow CI or deployment repair, apply only relevant guidance without rebuilding the project.
 
-## Tooling and tasks
-
-Pin developer and operational tools with mise, expose tasks with just, and manage Node/TypeScript dependencies with pnpm and committed lockfiles. Use existing ecosystem-native tools underneath. Prefer ordinary configuration and short recipes; custom wrappers, scripts, or orchestration need a concrete justification.
-
-Keep non-mutating `just check` separate from mutating `just format`. GitHub Actions calls the same local tasks. Pin act through mise and expose `just ci-test` for checks/builds with a documented compatible runner image, without publishing, deployment, or production secrets. Source/tool pins and runner-image compatibility are independent requirements. act cannot establish GitHub permissions, environment protections, concurrency, or identity integrations; verify those on GitHub when authorized.
-
 ## Select and adapt a reference
 
 For a concrete setup recommendation or implementation, read one matching README and its relevant linked runbooks before choosing configuration or operational steps. Each example is standalone; adapt its contracts and prerequisites rather than copying every component. Use Docker Compose for warranted local dependencies.
@@ -24,6 +18,12 @@ For a concrete setup recommendation or implementation, read one matching README 
 | Mixed-language durable jobs | [Monorepo](examples/monorepo/README.md): pnpm workspaces, one Go module, standard HTTP router, pgx/sqlc/River, PostgreSQL, established migrations |
 | Third-party server | [Minecraft](examples/minecraft/README.md): pinned upstream itzg image/game, private administration, coordinated backups, single world writer |
 | Unhosted TypeScript package | [Library](examples/library/README.md): ESM/declarations, tsdown, Vitest, publint, Are the Types Wrong, packed consumer, Changesets, explicit npm trusted-publishing release; no VPS/container stack |
+
+## Tooling and tasks
+
+Pin developer and operational tools with mise, expose tasks with just, and manage Node/TypeScript dependencies with pnpm and committed lockfiles. Use existing ecosystem-native tools underneath. Prefer ordinary configuration and short recipes; custom wrappers, scripts, or orchestration need a concrete justification.
+
+Keep non-mutating `just check` separate from mutating `just format`. GitHub Actions calls the same local tasks. Pin act through mise and expose `just ci-test` for checks/builds with a documented compatible runner image, without publishing, deployment, or production secrets. Source/tool pins and runner-image compatibility are independent requirements. act cannot establish GitHub permissions, environment protections, concurrency, or identity integrations; verify those on GitHub when authorized.
 
 ## Deployment and ownership
 
