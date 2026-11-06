@@ -2,8 +2,6 @@
 
 A small React checklist with no backend or persistent storage. Refreshing clears all tasks.
 
-This project runs independently of the parent repository. Copy the entire directory, including dotfiles and the lockfile.
-
 ## Setup
 
 Install [mise](https://mise.jdx.dev/getting-started.html) and activate it for your shell. From this directory:
@@ -28,4 +26,4 @@ Without shell activation, prefix just commands with `mise exec --`. Linux browse
 | `just build` | Build static assets. |
 | `just test-browser` | Build and test in Chromium against a local preview server. |
 
-Browser tests require port 4173 to be free. Root repository checks exclude this example; run its own `just check`. No deployment is configured.
+Browser tests require port 4173 to be free. No deployment is configured.

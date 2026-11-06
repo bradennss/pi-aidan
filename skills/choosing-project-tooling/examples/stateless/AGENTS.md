@@ -1,10 +1,23 @@
 # Stateless checklist
 
-A [React](https://react.dev) checklist reference that runs independently of the parent repository. Tasks live in memory and disappear on refresh.
+A [React](https://react.dev) checklist. Tasks live in memory and disappear on refresh.
 
-## Working in this example
+## Setup
 
-Use mise for pinned tooling, pnpm for dependencies, and the recipes in `justfile` for tasks. Keep changes within this directory unless separately authorized. Preserve the small, accessible UI; adding persistence, a backend, authentication, or deployment needs approval.
+Install [mise](https://mise.jdx.dev/getting-started.html) and activate it for your shell. From the project directory:
+
+```sh
+mise trust
+mise install
+just install
+just install-browser
+```
+
+`just install` uses the frozen lockfile. Browser tests need Chromium; on Linux, also install [Playwright's system libraries](https://playwright.dev/docs/intro#system-requirements). Without shell activation, prefix just commands with `mise exec --`.
+
+## Working on the checklist
+
+Use mise for pinned tooling, pnpm for dependencies, and the recipes in `justfile` for tasks. Preserve the small, accessible UI; adding persistence, a backend, authentication, or deployment needs approval.
 
 Keep secrets and generated output out of Git. Do not bypass dependency-install policies or perform provisioning, deployment, publishing, or external-account changes without authorization.
 
@@ -18,7 +31,7 @@ Keep secrets and generated output out of Git. Do not bypass dependency-install p
 
 ## Verifying changes
 
-Run `just check` for every change; parent repository checks exclude this example. Use `just format` to fix formatting. For executable or rendered changes, also run the build and browser tests:
+Run `just check` for every change. Use `just format` to fix formatting. For executable or rendered changes, also run the build and browser tests:
 
 ```sh
 just check
