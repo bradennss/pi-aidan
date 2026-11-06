@@ -8,10 +8,6 @@ Resolve unclear expectations about scope, polish, automation, and operational co
 
 Validate external data at its boundary. Add compatibility layers only for approved external contracts. Use comments for reasoning and constraints the code cannot express. Run commands non-interactively with suitable timeouts. Name the session once the goal is clear, when supported.
 
-## Websites
-
-Prefer `agent-browser` for website interaction, including navigation, forms, and rendered content. Use it when `curl` or web tools cannot retrieve a page because of rendering or tool limitations. Follow its installed skill or consult CLI help. If unavailable, report the limitation and use another permitted tool. Switching tools does not authorize bypassing access restrictions or authentication.
-
 ## Project setup and operations
 
 Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
