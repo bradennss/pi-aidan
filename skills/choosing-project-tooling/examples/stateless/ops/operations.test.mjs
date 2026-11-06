@@ -51,7 +51,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       join(repo, ".gitignore"),
       "infra/.terraform/\ninfra/*.backup\n.recovery/\n",
     );
-    cpSync(join(root, "ops"), join(repo, "ops"), { recursive: true });
+    cpSync(join(root, "justfile"), join(repo, "justfile"));
     ok(dir, "git", ["init", "--bare", "--initial-branch=main", remote]);
     ok(repo, "git", ["init", "--initial-branch=main"]);
     ok(repo, "git", ["config", "user.email", "test@example.invalid"]);
@@ -69,7 +69,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
     );
     assert.notEqual(failed.status, 0);
     assert.match(failed.stderr, /local-exec provisioner error/);
-    ok(repo, "bash", ["ops/persist-state.sh"]);
+    ok(repo, "just", ["persist-state"]);
     const encrypted = readFileSync(
       join(repo, "infra/production.tfstate"),
       "utf8",
@@ -79,6 +79,9 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       false,
     );
     assert.ok(JSON.parse(encrypted).encrypted_data);
+    const persistedCommit = ok(repo, "git", ["rev-parse", "HEAD"]);
+    ok(repo, "just", ["persist-state"]);
+    assert.equal(ok(repo, "git", ["rev-parse", "HEAD"]), persistedCommit);
     ok(dir, "git", ["clone", remote, peer]);
     ok(peer, "git", ["config", "user.email", "test@example.invalid"]);
     ok(peer, "git", ["config", "user.name", "Local test"]);
@@ -92,7 +95,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       "-input=false",
       "-auto-approve",
     ]);
-    const rejected = run(repo, "bash", ["ops/persist-state.sh"]);
+    const rejected = run(repo, "just", ["persist-state"]);
     assert.notEqual(rejected.status, 0);
     assert.match(rejected.stderr, /rejected|fetch first/);
     assert.equal(
@@ -114,7 +117,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       join(peer, "infra/production.tfstate"),
     );
     ok(peer, "tofu", ["-chdir=infra", "init", "-input=false"]);
-    ok(peer, "bash", ["ops/verify-state.sh"]);
+    ok(peer, "just", ["verify-state"]);
     const state = JSON.parse(
       ok(peer, "tofu", ["-chdir=infra", "show", "-json"]),
     );
@@ -124,7 +127,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       ).values.input,
       "local-state-rehearsal-sensitive-marker",
     );
-    ok(peer, "bash", ["ops/persist-state.sh"]);
+    ok(peer, "just", ["persist-state"]);
     assert.deepEqual(
       readFileSync(join(peer, "infra/production.tfstate")),
       recovery,
@@ -133,7 +136,7 @@ test("partial apply persists encrypted state; rejected push retains recovery; re
       join(peer, "infra/production.tfstate"),
       '{"version":4,"resources":[]}',
     );
-    const plaintext = run(peer, "bash", ["ops/persist-state.sh"]);
+    const plaintext = run(peer, "just", ["persist-state"]);
     assert.notEqual(plaintext.status, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });

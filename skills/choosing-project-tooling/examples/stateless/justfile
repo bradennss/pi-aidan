@@ -32,6 +32,21 @@ infra-validate:
 infra-plan:
     sops exec-env secrets/state.enc.yaml 'sops exec-env secrets/infra.enc.yaml "tofu -chdir=infra init -input=false -lockfile=readonly && tofu -chdir=infra plan -input=false"'
 
+# Only native-encrypted state may be persisted or uploaded.
+verify-state:
+    jq -e 'keys == ["encrypted_data", "encryption_version", "lineage", "meta", "serial"] and (.encrypted_data | type == "string" and length > 0)' infra/production.tfstate >/dev/null
+    tofu -chdir=infra state pull >/dev/null
+
+# CI state writer. Retain verified ciphertext before committing; never rebase state.
+persist-state: verify-state
+    mkdir -p .recovery
+    cp infra/production.tfstate .recovery/production.tfstate
+    git add -- infra/production.tfstate
+    if ! git diff --cached --quiet -- infra/production.tfstate; then \
+        git -c user.name='Infrastructure state' -c user.email='infra@users.noreply.github.com' commit --only -m 'Persist encrypted infrastructure state [skip ci]' -- infra/production.tfstate && \
+        git push origin HEAD:main; \
+    fi
+
 install-host:
     cd ansible && ansible-galaxy collection install -r requirements.yml -p collections
 

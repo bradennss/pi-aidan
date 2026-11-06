@@ -72,7 +72,7 @@ jobs:
           printf '%s' "$STATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
           test "$STATE_SHA256" = "$(sha256sum infra/production.tfstate | cut -d' ' -f1)"
           # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
-          sops exec-env secrets/state.enc.yaml 'bash ops/verify-state.sh'
+          sops exec-env secrets/state.enc.yaml 'just verify-state'
           test "$REVISION" = "$(git ls-remote origin refs/heads/main | cut -f1)"
           echo "Recovery checkpoint: $REVISION / $STATE_SHA256; no plan/apply performed" >> "$GITHUB_STEP_SUMMARY"
       - name: Plan and optionally apply
@@ -102,7 +102,7 @@ jobs:
         run: |
           if [ -f infra/production.tfstate ]; then
             # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
-            sops exec-env secrets/state.enc.yaml 'bash ops/persist-state.sh'
+            sops exec-env secrets/state.enc.yaml 'just persist-state'
           else
             echo 'No state produced; recovery checkpoint required before next apply' >&2
             exit 1
@@ -112,7 +112,7 @@ jobs:
         run: |
           test -f infra/production.tfstate
           # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
-          sops exec-env secrets/state.enc.yaml 'bash ops/verify-state.sh'
+          sops exec-env secrets/state.enc.yaml 'just verify-state'
           mkdir -p .recovery
           cp infra/production.tfstate .recovery/production.tfstate
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
