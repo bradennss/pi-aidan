@@ -1,0 +1,30 @@
+check:
+    pnpm exec prettier --check .
+    pnpm exec eslint . --max-warnings 0
+    pnpm exec tsc --noEmit
+    pnpm exec vitest run
+
+format:
+    pnpm exec prettier --write .
+
+build:
+    pnpm exec tsdown
+
+pack: build
+    mkdir -p .artifacts
+    pnpm pack --out .artifacts/package.tgz
+    pnpm exec publint .artifacts/package.tgz --strict
+    pnpm exec attw .artifacts/package.tgz --profile esm-only
+
+test-consumer: pack
+    #!/usr/bin/env bash
+    set -euo pipefail
+    artifact="$PWD/.artifacts/package.tgz"
+    consumer="$(mktemp -d "${TMPDIR:-/tmp}/duration-consumer.XXXXXX")"
+    trap 'rm -rf "$consumer"' EXIT
+    cp test/consumer/{package.json,tsconfig.json,index.ts} "$consumer/"
+    cd "$consumer"
+    unset NODE_PATH
+    pnpm add --save-exact "$artifact"
+    pnpm exec tsc
+    node dist/index.js
