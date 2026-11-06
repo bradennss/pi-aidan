@@ -108,7 +108,7 @@ host-check:
     cd ansible && ansible-playbook --syntax-check playbook.yml
 
 ci-test:
-    act push -W .github/workflows/check.yml -j check --secret-file /dev/null --var-file /dev/null --env-file /dev/null --input-file /dev/null
+    act push --network host -W .github/workflows/check.yml -j check --secret-file /dev/null --var-file /dev/null --env-file /dev/null --input-file /dev/null
 
 # Local-only failure/recovery rehearsal. Creates no cloud resources.
 test-operations:
