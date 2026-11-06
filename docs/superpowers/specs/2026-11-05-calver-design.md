@@ -1,5 +1,7 @@
 # CalVer project versioning
 
+> Historical design, superseded by [Preferred project stack](2026-11-06-preferred-stack-design.md). This document does not define current defaults.
+
 ## Intent and scope
 
 Make CalVer the default for new projects created with Aidan. Existing projects retain established versioning unless the user requests migration. Update `prompts/system.md` and `skills/setting-up-new-projects/SKILL.md`, including the skill's requirements for generated project guidance. Document the convention in `docs/prompting.md`.

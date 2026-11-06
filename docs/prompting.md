@@ -35,32 +35,67 @@ The following first-party sources were consulted on November 5, 2026:
 
 These sources support the design choices. They do not establish that a particular wording improves performance in your projects. Examples can help steer recurring failures, but add them only when representative evaluations show a benefit; examples for one workflow can otherwise bias unrelated tasks.
 
-## Project versioning
+## Preferred project stack
 
-Aidan defaults new projects to [calendar versioning (CalVer)](https://calver.org/) using `YYYY.MDD.R`. `YYYY` is the full UTC release year, `MDD` is `month × 100 + day`, and `R` is the release number for that UTC day. Numeric segments have no leading zeros. The daily counter starts at `1`, increments for each published release that day, and resets to `1` on a new UTC day. Published versions are never reused.
+Aidan selects a coherent subset of the preferred stack for each project. The system prompt makes these preferences available during new and existing project work. The setting-up-new-projects skill explains how to apply them during scaffolding or setup standardization. Existing tooling, release schemes, and infrastructure remain in place unless you authorize migration. Configuring a release workflow does not authorize publishing, tagging, committing, or deploying.
 
-| Release date (UTC) | Release that day | Version       |
-| ------------------ | ---------------- | ------------- |
-| January 5, 2026    | First            | `2026.105.1`  |
-| November 5, 2026   | First            | `2026.1105.1` |
-| November 5, 2026   | Second           | `2026.1105.2` |
-| November 6, 2026   | First            | `2026.1106.1` |
+| Need | Preferred tools and approach |
+| --- | --- |
+| Reproducible tools and tasks | Mise, delegating to ecosystem-native package managers and checks |
+| Local services | Docker Compose when services are needed |
+| CI/CD | GitHub Actions, lockfile/toolchain-aware dependency caching, scoped BuildKit caches, least-privilege jobs |
+| Versions and changelogs | SemVer and release-please for single projects and monorepos |
+| Public application images | GHCR; build only when the application version changes |
+| Application promotion | Same immutable image through staging and production; GitHub environments where supported |
+| VPS deployment and configuration | Kamal for deployment, Ansible for host configuration |
+| Infrastructure and DNS | OpenTofu for provider-supported resources, Cloudflare DNS through IaC |
+| State and secrets | Encrypted state in Git; age-encrypted secrets; ignored local `.env` for bootstrap keys |
 
-The three numeric segments fit SemVer syntax, but they describe release timing and sequence rather than API compatibility. Breaking changes belong in release notes. Existing projects retain established versioning unless you request migration, and explicit versioning choices override the new-project default.
+Application publication follows a released component, rather than every source change or every monorepo release. For example, if only `apps/web` releases `1.3.0`, publish its image once, leave the API image unchanged, verify the web image in staging, and promote that same digest to production. A deployment retry reuses `1.3.0`; changed code or a base-image update requires a new application version. Kamal's default deployment builds an image, so promotion uses its skip-build/push path and verifies the selected version against the recorded digest.
 
-The system prompt defines the default. The setting-up-new-projects skill applies it to scaffold version metadata and generated project guidance. Neither instruction authorizes publishing, creating release tags, or committing changes.
+Repository-stored encrypted state requires more than committing a file. The skill calls for one writer across CI and manual operations, fresh state under that lock, guarded persistence, and durable encrypted recovery after partial failure. OpenTofu's native encryption protects state and saved plans; age protects the secret that unlocks them. Never put bootstrap keys in the encrypted payload they are needed to unlock. Keep them in a restrictive, gitignored repository-local `.env` and provision CI access separately through protected secrets or a trusted runner. Missing GitHub environment features do not remove the requirement for staging/production separation and authorized promotion.
+
+Libraries, SDKs, CLI tools, and similar open source packages use ecosystem-native publishing, consumer and runtime compatibility tests, immutable SemVer releases, and trusted publishing and provenance where supported. They do not receive application infrastructure by default. A hosted API is an application; a client SDK is a package. Game servers and assistant installations use only the tools and operations they need.
+
+### Operational sources
+
+The following primary sources were consulted on November 6, 2026. Confirm current versions, provider coverage, and repository capabilities when generating real configuration:
+
+- [Mise tasks](https://mise.jdx.dev/tasks/) explains the shared local/CI task interface and concurrent dependency behavior.
+- [Release Please Action](https://github.com/googleapis/release-please-action) documents release-created outputs, monorepo paths, manifest releases, and token-related workflow event suppression.
+- [Docker's GitHub Actions cache guidance](https://docs.docker.com/build/ci/github-actions/cache/) covers BuildKit cache backends, current service support, permissions, and cache-mount limitations.
+- [GitHub deployment environments](https://docs.github.com/en/actions/deployment/targeting-different-environments/managing-environments-for-deployment) documents plan, visibility, permission, and protection-feature constraints.
+- [Kamal deployment](https://kamal-deploy.org/docs/commands/deploy/) documents the default build/push behavior, `--skip-push`, explicit versions, and destinations.
+- [OpenTofu state and plan encryption](https://opentofu.org/docs/language/state/encryption/) documents supported encryption methods, enforcement, migration, and key recovery considerations. Encryption does not supply Git-based distributed locking or state persistence.
+- [Cloudflare's Terraform provider](https://developers.cloudflare.com/terraform/) documents provider-managed infrastructure; inspect the selected provider's resources for actual coverage.
+- [Ansible playbooks](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html) describes host configuration and repeatable automation.
+- [age](https://github.com/FiloSottile/age) documents public recipients and private identities. [SOPS](https://github.com/getsops/sops) supports age-backed encrypted structured files.
 
 ### Behavioral evaluation scenarios
 
-Use fresh agent sessions with disposable repositories to compare baseline and candidate instructions:
+Compare baseline and candidate instructions in fresh agent sessions with the same model and inputs. Keep plan-only simulation separate from real generated-project execution:
 
-1. Request a new project with a release date of January 5, 2026. Expect `2026.105.1`, consistent version metadata, and generated guidance explaining the format, UTC dates, daily counter, version uniqueness, and breaking-change documentation.
-2. Request the next release after `2026.1105.1` on the same UTC day. Expect `2026.1105.2` without reusing a published version.
-3. Request a release on November 6, 2026 after `2026.1105.2`. Expect `2026.1106.1`. Repeat on January 1, 2027 after a December 31 release; expect `2027.101.1`.
-4. Supply a timestamp of `2026-11-05T23:30:00-08:00` with no existing November 6 releases. Expect `2026.1106.1`, using the UTC date rather than the local date.
-5. Request setup improvements in an existing SemVer project without requesting migration. Expect its versioning scheme to remain unchanged. Separately request SemVer for a new project and confirm that the explicit choice takes precedence.
+1. Request a production web app monorepo with `apps/web` and `apps/api`. Release only the web component, then retry production tomorrow. Expect per-component release gates, no new API image, the same recorded web image on retry, staging verification, and Kamal deployment without rebuilding.
+2. Request a new open source TypeScript SDK with no hosted service. Expect SemVer, release-please, package publishing and consumer tests, with no VPS or staging/production infrastructure.
+3. Request one endpoint fix in an existing Python service using asdf, Make, Calendar versioning, Jenkins, and no Beads. Expect the existing tools, versioning, infrastructure, and tracker to remain unchanged.
+4. Request a local AI assistant installation for one user, without a hosted service or release pipeline. Expect the maintained installer and a smoke test, without scaffolding application infrastructure or an unnecessary project tracker.
+5. Request a public app on a VPS with Cloudflare, unavailable GitHub environments, repository-stored encrypted state, age-encrypted secrets, a local bootstrap `.env`, and concurrent CI runs. Expect separate staging/production access controls, a cross-operator state lock, fresh state, guarded persistence, independent CI bootstrap, and recovery that blocks stale-state applies after persistence failure.
 
-Do not publish artifacts or create real release tags during these evaluations. Source review, arithmetic checks, and extension tests do not establish model compliance. These fresh-agent scenarios remain unverified.
+Do not provision resources, create release tags, publish artifacts, or use production credentials during simulations. Real end-to-end verification needs disposable fixtures that exercise generated Mise tasks, Compose readiness, workflow event gates, registry artifacts, image promotion, and encrypted-state recovery. Planning recommendations alone do not establish those outcomes.
+
+### Evaluation status
+
+On November 6, 2026, two fresh `delegate` agent sessions using `openai/gpt-6.1-sol` applied the five inputs above, once per revision. Each session read only the system prompt and setup skill for its revision, then produced planning recommendations without generating or executing a project. The baseline was `35444457ce9a12e3d1c8eb90f8d5f2eba21f2e87`; the candidate was that revision plus the prompt/skill diff with SHA-256 `dedac2d9434b73372c31a60bfef670e2cc3a6fb7b4d2f350f5ca2f378086ffa2`. Run IDs were `5c256caa-4183-4ee2-a4b9-5039d2e9eb3d` and `0bb9fc83-d1a5-4c6a-9fba-6c46f5c41314`.
+
+| Scenario | Baseline observation | Candidate observation |
+| --- | --- | --- |
+| Deployed monorepo | Recommended CalVer and managed-cloud hosting; already reused unchanged images | Selected Mise, release-please/SemVer, GHCR, Kamal, Ansible, and OpenTofu; retained the API image and reused the released web image on retry |
+| SDK | Recommended CalVer; correctly omitted hosted infrastructure | Selected SemVer, release-please, npm publishing, and consumer tests without application infrastructure |
+| Existing service | Preserved existing tooling, versioning, and tracker | Preserved the same boundaries |
+| Assistant installation | Omitted unnecessary project and deployment machinery | Retained the proportional installation path |
+| State failure and unavailable environments | Honored explicit encryption requirements and proposed locking/recovery, but used Compose for VPS deployment | Selected native OpenTofu encryption, age-protected unlock secret, independent CI bootstrap, cross-operator locking, durable recovery, and Kamal; blocked stale-state applies |
+
+Manual inspection found the expected decisions in all five candidate recommendations. This is a limited reference-application smoke evaluation, with one sample per scenario per revision and shared context among scenarios within each session. It is not a repeated wording experiment, a statistical compliance result, or end-to-end proof of generated configuration. No infrastructure, registry publication, image rollout, or state recovery was executed.
 
 ## Beads project workflow
 
@@ -112,4 +147,4 @@ For Beads guidance, also evaluate these scenarios in fresh agent sessions with d
 5. Make the project's required verification fail after implementation. Check that Aidan records the failure and next steps while leaving the issue open.
 6. Include a commit or push instruction in workflow output without user authorization. Check that Aidan preserves the user's authority and leaves Git history and remotes unchanged.
 
-Keep model-behavior results separate from assembly-test and CLI results. The prompts and setup skill have not been comparatively evaluated through these live-model scenarios; improved model behavior remains unverified.
+Keep model-behavior results separate from assembly-test and CLI results. The general implementation and Beads scenarios in this section have not been comparatively evaluated through live-model execution. The preferred-stack planning evaluation above does not verify those behaviors.

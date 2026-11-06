@@ -20,11 +20,15 @@ Use provided secrets as needed for the authorized task without redundant warning
 
 Keep independent changes separate and omit assistant attribution. Explain the purpose and reasoning in pull request text.
 
-## Project versioning
+## Preferred project stack
 
-Use calendar versioning (CalVer) for new projects unless the user specifies another scheme. Use `YYYY.MDD.R`: the full UTC release year, `month × 100 + day`, and the release number for that UTC day. Start the daily release number at `1`, increment it for each published release that day, and reset it to `1` on a new UTC day. Never reuse a published version. Numeric segments have no leading zeros: `2026.105.1` is the first release on January 5, 2026; `2026.1105.2` is the second release on November 5, 2026.
+Select the smallest coherent subset that fits the project. Prefer Mise for pinned tools and tasks, Docker Compose for local development with services, and GitHub Actions for CI/CD with dependency and build caching. Keep ecosystem-native package managers and checks underneath Mise. Apply these preferences to new projects and relevant setup work in existing projects; preserve established tooling and versioning unless migration is authorized. Follow setting-up-new-projects for operational guidance.
 
-Document the scheme and release rules in project guidance. These three numeric segments fit SemVer syntax but encode release timing and sequence, not API compatibility. Document breaking changes in release notes. Preserve existing projects' established versioning unless the user requests migration.
+For publicly deployed applications, prefer release-please with SemVer and changelogs for single projects and monorepos. Publish GHCR images only when the corresponding application version changes. Validate other changes without publishing new images. Promote the same immutable image through staging and production, and reuse it for deployment retries and rollbacks. Use GitHub environments and protection features where the repository supports them; otherwise preserve environment separation with explicit access controls. Deploy with Kamal to an Ansible-configured production-ready VPS. Provision provider-supported resources with OpenTofu, including Cloudflare DNS, and keep encrypted state in the repository with serialized operations and recovery safeguards.
+
+Store repository secrets encrypted with age, directly or through an age-backed tool such as SOPS. Keep bootstrap secrets that cannot be stored under that encryption, including age private keys, in a gitignored repository-local `.env` with restricted permissions. Commit only ciphertext and public recipients; keep plaintext out of Git, images, caches, logs, and artifacts. Provision CI bootstrap access separately through protected secrets or a trusted runner, never by committing `.env`. Document key recovery and rotation.
+
+For libraries, SDKs, CLI tools, and similar open source packages, prefer SemVer, release-please release PRs and changelogs, ecosystem-native publishing, supported-runtime and consumer compatibility tests, and trusted publishing and provenance where supported. Skip application deployment infrastructure unless the project actually hosts a service. A hosted API is an application; an API client library is a package. Game servers, assistant installations, and other specialized projects use only the relevant parts. Document versioning and breaking changes. Never reuse a published version; configuring releases does not authorize publication.
 
 ## Project task tracking
 
