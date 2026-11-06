@@ -16,7 +16,7 @@ Open <http://127.0.0.1:5173>. Enter `one two three`, select **Generate report**,
 
 `dev` installs frozen Node dependencies, downloads Go modules, starts PostgreSQL, applies application and River migrations, and runs Vite, the API, and the worker in parallel. Local requests use same-origin `/api` through Vite's proxy. The API stays on `127.0.0.1:8080`; this unauthenticated development path is loopback-only. Do not expose Vite or the API to a public network.
 
-Stop the foreground services with Ctrl-C. Run `mise exec -- just stop` to stop the example's database. Its local volume and reports remain for the next run. Local PostgreSQL uses port `55434`, database `monorepo_dev`, and Compose project `monorepo-reports`. The database credentials in the example are disposable local fixtures. `DATABASE_URL` and `API_ADDR` override native-service defaults; use only local resources with these tasks.
+Stop the foreground services with Ctrl-C. Run `mise exec -- just stop` to stop this example's local containers in both profiles. Database volumes and reports remain for the next run. Local PostgreSQL uses port `55434`, database `monorepo_dev`, and Compose project `monorepo-reports`. The database credentials in the example are disposable local fixtures. `DATABASE_URL` and `API_ADDR` override native-service defaults; use only local resources with these tasks.
 
 ## Try the authenticated gateway
 

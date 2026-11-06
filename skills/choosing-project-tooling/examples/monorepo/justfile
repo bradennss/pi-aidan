@@ -55,9 +55,9 @@ test-integration: db-up
 test-race: db-up
     TEST_DATABASE_URL='{{ dev_database }}' go test -race ./... -count=1 -v
 
-# Retains the local database volume. Does not stop any other Compose project.
+# Retains local database volumes. Does not stop any other Compose project.
 stop:
-    docker compose down
+    docker compose --profile dev --profile gateway down
 
 # Always production-served assets and native gateway auth, with isolated test data.
 test-browser:
