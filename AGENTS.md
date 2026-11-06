@@ -14,6 +14,7 @@ Install [Superpowers](https://github.com/obra/superpowers) alongside Aidan for b
 - `src/messages.ts` builds the injected messages and finds trailing `write`/`edit` tool results.
 - `prompts/system.md`, `prompts/before-user.md`, and `prompts/after-write.md` are prompt content.
 - `skills/` holds skill folders, each with a `SKILL.md`.
+- `skills/choosing-project-tooling/` provides tooling defaults and five standalone reference projects under `examples/`.
 
 ## Verifying changes
 
