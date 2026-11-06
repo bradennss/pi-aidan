@@ -15,7 +15,7 @@ Keep non-mutating `just check` separate from mutating `just format`. GitHub Acti
 
 ## Select and adapt a reference
 
-Read the closest example's README, then only relevant configuration and linked runbooks. Each example is standalone; adapt its contracts and prerequisites rather than copying every component. Use Docker Compose for warranted local dependencies.
+For a concrete setup recommendation or implementation, read one matching README and its relevant linked runbooks before choosing configuration or operational steps. Each example is standalone; adapt its contracts and prerequisites rather than copying every component. Use Docker Compose for warranted local dependencies.
 
 | Workload | Preferred stack and reference |
 | --- | --- |
