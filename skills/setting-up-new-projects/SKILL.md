@@ -39,7 +39,7 @@ Use the following preferences as defaults for new work in the applicable categor
 | Tool versions and shared tasks | Mise over native package scripts and commands | New maintained projects needing reproducible tools and a shared task interface |
 | Local backing services | Docker Compose | Development needs databases or other services |
 | Continuous integration | GitHub Actions | Shared or maintained repositories needing automated checks |
-| Versioning and release automation | SemVer, release-please | Versioned packages or applications with recurring releases |
+| Versioning and release automation | SemVer, release-please, independent versions per app | Versioned packages or applications with recurring releases |
 | Package publishing | Ecosystem-native registry and tooling | Distributing a library, SDK, or CLI |
 | Container images | GHCR | Distributing containerized services |
 | Containerized VPS deployment | Kamal | Deploying applications that fit its supported workflow |
@@ -69,7 +69,21 @@ Prefer SemVer and release-please for versioned packages and applications with re
 
 For hosted applications, choose a deployment path that fits the service and its operator. Prefer GHCR and Kamal for containerized VPS applications that fit their supported workflow, Ansible for repeatable host configuration, and OpenTofu with Cloudflare for provisioned resources and DNS. Use a native runtime or managed platform when it better fits the actual service, and explain that choice briefly. Local tools, libraries, and game servers do not automatically need web application infrastructure.
 
-Use immutable release artifacts and reuse them across promotion or retries where practical. Gate publication on the intended component's release and verify retry behavior. Select staging, approval gates, and monitoring according to the consequences of failure. For persistent production data, establish backups and a tested recovery path before relying on the deployment. Verify rollout health and document rollback or recovery, accounting for data changes that an application rollback cannot undo.
+### Application versions, builds, and deployment identity
+
+Default to independent SemVer versions and releases for each deployable app, including apps in a monorepo. Use release-please's supported per-component configuration and release outputs. A release of one app does not release or rebuild the others. Shared code, dependency, or build-input changes must be accounted for in each affected app's release.
+
+Tie deployment identity to the app's released version. Tag its image with that version and record the source revision and immutable image digest. Build and publish a new release image only when that app has a new released version, from its exact released source. Gate publication on that component's release output, rather than an aggregate monorepo release flag or every merge to main. Pull requests can run validation builds without publishing release images.
+
+Reuse the existing artifact for retries, staging-to-production promotion, and rollback. Verify the version resolves to the recorded digest and use the deployment tool's supported path to skip rebuilding or pushing. Never replace a released version with different bytes. Code, dependency, or base-image changes that require a different artifact require a new app version. Leave unchanged apps on their existing versions and images.
+
+For example, releasing `apps/web` as `1.3.0` builds and publishes only the web image. `apps/api` stays on its current version. Promoting web to production tomorrow or retrying its deployment uses the same `1.3.0` digest without rebuilding it.
+
+Verify component-specific release gates, unchanged-app behavior, and artifact reuse on retry when configuring the workflow. Use the release and deployment tools' built-in capabilities instead of creating a custom release framework.
+
+### Operational readiness
+
+Select staging, approval gates, and monitoring according to the consequences of failure. For persistent production data, establish backups and a tested recovery path before relying on the deployment. Verify rollout health and document rollback or recovery, accounting for data changes that an application rollback cannot undo.
 
 ## Keep operations straightforward and safe
 
