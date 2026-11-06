@@ -15,8 +15,9 @@ TimeoutStartSec=1h
 ExecStartPre=/usr/bin/test ! -e /srv/minecraft/worlds/primary/.paused
 ExecStartPre=/usr/bin/touch /run/minecraft-backup/started
 ExecStart=/usr/bin/docker compose --env-file /dev/null -f /etc/minecraft/backup.compose.yml run --name minecraft-backup-once --rm --no-deps -T backup
-# Verify a new matching snapshot and stored bytes before retention, not exit zero alone.
-ExecStart=/bin/bash -eu -o pipefail -c 'since=$$(date -u -r /run/minecraft-backup/started +%%Y-%%m-%%dT%%H:%%M:%%S); restic snapshots --json --latest 1 --host minecraft-production --tag minecraft-data,minecraft --path /data | jq -e --arg since "$$since" "length == 1 and .[0].time >= \\$$since" >/dev/null'
+# Compare UTC timestamps at the marker's whole-second precision, not as strings.
+# Round-trip validation rejects malformed dates before retention.
+ExecStart=/bin/bash -eu -o pipefail -c 'since=$$(date -u -r /run/minecraft-backup/started +%%s); restic snapshots --json --latest 1 --host minecraft-production --tag minecraft-data,minecraft --path /data | jq -e --argjson since "$$since" "length == 1 and (.[0].time | sub(\\"[.][0-9]+Z$$\\"; \\"Z\\") | . as \\$$stamp | fromdateiso8601 as \\$$seconds | select((\\$$seconds | todateiso8601) == \\$$stamp) | \\$$seconds >= \\$$since)" >/dev/null'
 ExecStart=/usr/bin/restic check
 ExecStart=/usr/bin/restic forget --host minecraft-production --tag minecraft-data,minecraft --path /data --keep-daily 7 --keep-weekly 5 --keep-monthly 12 --keep-tag keep --prune
 NoNewPrivileges=true
