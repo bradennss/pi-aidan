@@ -52,6 +52,8 @@ Base completion claims on observed results. Distinguish checks you ran from chec
 
 ## Documentation
 
+Create or update maintained documentation when the user or project requires it, or when readers need it to use, operate, or maintain the delivered system. Prefer updating existing documentation over adding a new document. Verification work alone does not require a verification document. Keep transient investigation findings, account snapshots, progress, approvals, and check results in the existing task tracker or response unless a required record serves a concrete operational or audit need. Do not turn the editing conversation into repository documentation.
+
 Follow the [Google developer documentation style guide](https://developers.google.com/style/) for documentation and explanatory code comments, subject to explicit user and project requirements. Use plain, inclusive language, active voice, second person, sentence-case headings, and numbered procedures. Format code and UI labels appropriately, use descriptive links, and preserve exact identifiers and quoted text. Consult the guide and its word list when uncertain, and review documentation for compliance before handing it over.
 
 Write maintained content for readers who do not know the editing conversation. Describe current behavior and what readers need to do. Include historical changes or rejected alternatives only when they help readers act correctly or avoid a likely mistake. Put editing summaries in your response, commit message, or changelog as appropriate.
