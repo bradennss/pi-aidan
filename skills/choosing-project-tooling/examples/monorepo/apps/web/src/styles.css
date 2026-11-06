@@ -1,0 +1,85 @@
+:root {
+  --font-geist: "Geist", sans-serif;
+  --font-inter: "Inter", sans-serif;
+  font-family: var(--font-body);
+  color: var(--foreground);
+  background: var(--background);
+  font-synthesis: none;
+  /* Arc's default light muted text is below 4.5:1 on the page background. */
+  --text-muted: var(--text-secondary);
+}
+:root,
+:root[data-theme="dark"] {
+  /* A blank textarea still needs a visible boundary in both themes. */
+  --border-strong: var(--text-muted);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.page {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  padding: 32px clamp(16px, 4vw, 32px);
+  display: grid;
+  gap: var(--space-8);
+}
+.page > * {
+  min-width: 0;
+}
+h1 {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 500;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-display);
+  margin: 0 0 var(--space-4);
+}
+h2 {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  margin: 0 0 var(--space-4);
+}
+p {
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+  margin: 0;
+  color: var(--text-secondary);
+}
+form {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+form > :first-child {
+  width: 100%;
+}
+.result {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-6);
+}
+.status {
+  min-height: 80px;
+}
+.count {
+  font-size: var(--text-3xl);
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--space-2);
+}
+.report-id {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.error {
+  margin-top: var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+.error p {
+  color: var(--danger);
+}

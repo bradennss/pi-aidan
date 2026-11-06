@@ -1,2 +1,6 @@
 /bin/
 .env
+node_modules/
+apps/web/dist/
+test-results/
+playwright-report/

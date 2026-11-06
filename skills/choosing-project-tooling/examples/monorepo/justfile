@@ -8,6 +8,7 @@ prerequisites:
     mise install
 
 install:
+    pnpm install --frozen-lockfile
     go mod download
 
 setup: install db-up db-migrate
@@ -17,23 +18,25 @@ db-up:
 
 # Application schema and River schema have separate migration owners.
 db-migrate:
-    goose -dir db/migrations postgres "${DATABASE_URL:-{{dev_database}}}" up
-    river migrate-up --database-url "${DATABASE_URL:-{{dev_database}}}"
+    goose -dir db/migrations postgres "${DATABASE_URL:-{{ dev_database }}}" up
+    river migrate-up --database-url "${DATABASE_URL:-{{ dev_database }}}"
 
 generate:
     sqlc generate
 
 api:
-    DATABASE_URL="${DATABASE_URL:-{{dev_database}}}" go run ./cmd/api
+    DATABASE_URL="${DATABASE_URL:-{{ dev_database }}}" go run ./cmd/api
 
 worker:
-    DATABASE_URL="${DATABASE_URL:-{{dev_database}}}" go run ./cmd/worker
+    DATABASE_URL="${DATABASE_URL:-{{ dev_database }}}" go run ./cmd/worker
 
 format:
+    pnpm run format
     gofmt -w cmd internal test
 
 # Non-mutating. PostgreSQL tests skip unless TEST_DATABASE_URL is supplied.
 check:
+    pnpm run check
     test -z "$(gofmt -l cmd internal test)"
     sqlc diff
     docker compose config --quiet
@@ -41,16 +44,35 @@ check:
     go test ./...
 
 build:
+    pnpm run build
     go build -o bin/api ./cmd/api
     go build -o bin/worker ./cmd/worker
 
 # Each test creates/migrates/drops its own database on this example's server.
 test-integration: db-up
-    TEST_DATABASE_URL='{{dev_database}}' go test ./... -count=1 -v
+    TEST_DATABASE_URL='{{ dev_database }}' go test ./... -count=1 -v
 
 test-race: db-up
-    TEST_DATABASE_URL='{{dev_database}}' go test -race ./... -count=1 -v
+    TEST_DATABASE_URL='{{ dev_database }}' go test -race ./... -count=1 -v
 
 # Retains the local database volume. Does not stop any other Compose project.
 stop:
     docker compose down
+
+# Always production-served assets and native gateway auth, with isolated test data.
+test-browser:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    trap 'docker compose -p monorepo-browser --profile gateway down --volumes' EXIT
+    docker compose -p monorepo-browser --profile gateway up -d --build --wait --wait-timeout 180
+    pnpm exec playwright test
+
+web:
+    pnpm run dev
+
+# Native parallel recipes, with Ctrl-C stopping the foreground development session.
+dev: setup
+    just _dev
+
+[parallel]
+_dev: api worker web

@@ -1,24 +1,13 @@
 # Working in this example
 
-This directory is an independent Go module. Run commands here with `mise exec --`;
-use `README.md` for prerequisites and first-run setup. The only container is a local
-PostgreSQL dependency, owned by Compose project `monorepo-reports` on loopback
-port 55434. Preserve its volume and unrelated Docker resources.
+Run commands here with `mise exec --`. Use `README.md` for prerequisites and the first successful run. `just dev` starts the loopback development flow; `just check`, `just build`, `just test-integration`, and `just test-browser` cover frontend and backend. Use `just format` for mutation, `just generate` after SQL changes, and `just test-race` for real Go lifecycle/persistence regression checks.
 
-Use `just format`, `just generate`, `just check`, and `just build`. Run
-`just test-integration` and `just test-race` for real persistence and native-process
-behavior. Plain `go test ./...` skips database tests without `TEST_DATABASE_URL`;
-the README gives the guarded local URL. Tests own and drop only their randomly
-named databases. Do not point them at shared or production databases.
+Keep one Go module with separate API and worker entrypoints. The pnpm workspace contains only `apps/web` and root frontend/test tools. The example owns its own formatting; use Go-native formatting and sqlc generated-code comparison for Go. Use standard-library HTTP, pgx transactions, sqlc, goose, and River's own lifecycle. No queue wrapper or persistence/auth/worker-completion mocks. Edit SQL in `db/queries` and `db/migrations`, then regenerate `internal/db`; `connect.go` is handwritten. Preserve API response/text validation, atomic report/job commit, report-ID completion idempotency, and graceful worker shutdown contracts.
 
-Keep the API/worker as separate entrypoints in one module. Use standard-library
-HTTP, native pgx transactions, sqlc queries, goose application migrations, and
-River's own migrations/lifecycle. No queue wrapper or persistence mocks. Change
-`db/queries` and `db/migrations`, then regenerate sqlc output in `internal/db`.
-`internal/db/connect.go` is handwritten. A report and its River job must commit
-together; duplicate execution must leave one result by report ID.
+The development API is unauthenticated and defaults to loopback. Keep it there; Vite proxies same-origin `/api`. Gateway profile services use private Compose networking, with only Caddy's loopback port published. Native Basic auth covers static files and API routes; exempt only exact non-sensitive `GET /up`. Fixture credentials are disposable. Production HTTPS, SOPS secrets, deployment, infrastructure, and backups are not configured here.
 
-Preserve POST/GET response contracts and validate input before writes. Keep errors
-free of SQL and connection details. The API is unauthenticated and defaults to
-loopback; do not expose it publicly. Frontend, authenticated gateway, deployment,
-backups, and infrastructure are outside this backend example's current scope.
+Compose project `monorepo-reports` owns persistent development data. Preserve its volumes and unrelated Docker resources. PostgreSQL is on loopback port `55434`. `TEST_DATABASE_URL` must target that local fixture; Go tests validate all pgx fallback targets and create/drop only random `monorepo_test_*` databases. Plain Go tests skip database tests when that variable is absent.
+
+`just test-browser` reserves Compose project `monorepo-browser` and loopback port `4184`, serves built assets through Caddy, and removes only its own containers and volumes on exit. Do not use this project for non-test data or run concurrent browser suites. Tests use native worker/API stop/start to expose pending and outage states. Keep waits bounded, cleanup reliable, and credentials/submitted text out of retained browser artifacts. No test-only production endpoints or remote database fallbacks.
+
+The UI uses installed free Arc Textarea/Button components and foundation tokens. Keep labels, keyboard access, live status, reduced motion, and responsive layout intact. Validate external API data before rendering it; retry report retrieval without creating another job. Keep README human-first and transient evidence out of project docs.
