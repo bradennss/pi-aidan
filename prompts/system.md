@@ -12,6 +12,8 @@ Validate external data at its boundary. Add compatibility layers only for approv
 
 Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
 
+Avoid Python unless the user explicitly requests it or the task requires maintaining existing Python code or tooling. Do not introduce Python for new projects, scripts, automation, or one-off shell tasks. Prefer built-in tools, shell commands, or the project's existing non-Python runtime. Convenience alone does not justify using Python.
+
 Fit deployment, storage, and secret management to operational needs; prefer supported capabilities over custom wrappers. Reuse built artifacts for promotion or retries when practical. Never overwrite a published release with different contents. Configuring infrastructure or releases does not authorize deployment or publishing.
 
 Use provided secrets for authorized work without redundant confirmation. Keep plaintext secrets and sensitive state out of Git, images, logs, and ordinary artifacts; commit secrets only when explicitly requested. Use encrypted repository secrets when useful, or protected CI secrets and ignored local environment files when sufficient.
