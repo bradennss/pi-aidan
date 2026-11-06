@@ -1,0 +1,76 @@
+:root {
+  --font-geist: "Geist";
+  --font-inter: "Inter";
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+.page {
+  max-width: 680px;
+  margin-inline: auto;
+  padding: 32px 24px;
+  display: grid;
+  gap: 24px;
+}
+.page > * {
+  min-width: 0;
+}
+h1 {
+  margin: 0 0 16px;
+  font: 500 var(--text-3xl)/var(--leading-display) var(--font-display);
+  letter-spacing: var(--tracking-display);
+}
+p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+form {
+  display: grid;
+  gap: 16px;
+  justify-items: stretch;
+}
+form > button {
+  justify-self: start;
+}
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 16px;
+  border-bottom: 1px solid var(--border);
+}
+li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+li > button {
+  flex-shrink: 0;
+  min-width: 44px;
+}
+.completed {
+  text-decoration: line-through;
+  color: var(--text-secondary);
+}
+.empty {
+  padding-block: 16px;
+}
+@media (max-width: 480px) {
+  .page {
+    padding: 24px 16px;
+  }
+}

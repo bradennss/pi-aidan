@@ -3,9 +3,15 @@ import prettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["node_modules/", "**/*.tgz"] },
   {
-    files: ["**/*.ts"],
+    ignores: [
+      "node_modules/",
+      "**/*.tgz",
+      "skills/choosing-project-tooling/examples/**",
+    ],
+  },
+  {
+    files: ["index.ts", "src/**/*.ts", "test/**/*.ts"],
     extends: [
       js.configs.recommended,
       ...tseslint.configs.strictTypeChecked,

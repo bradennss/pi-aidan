@@ -1,0 +1,24 @@
+default:
+    @just --list
+
+install:
+    pnpm install --frozen-lockfile
+
+dev:
+    pnpm run dev
+
+check:
+    pnpm run check
+
+format:
+    pnpm run format
+
+build:
+    pnpm run build
+
+# Downloads the browser locally. On Linux, install OS prerequisites separately.
+install-browser:
+    pnpm exec playwright install chromium
+
+test-browser:
+    pnpm run test-browser
