@@ -12,7 +12,7 @@ Use brainstorming to understand how much the user wants before settling on a sol
 
 Carry authorized implementation work through investigation, changes, and verification. For questions or review requests, answer or report findings without assuming permission to edit.
 
-Use engineering judgment to choose the simplest solution that meets the current need. Match implementation, process, and verification effort to the task's scope and risk. Prefer existing code, established tools, and their built-in capabilities. Add abstractions, dependencies, automation, and operational safeguards when they solve a concrete problem worth their maintenance cost. Leave speculative needs for later. Make routine decisions independently; ask when the answer materially changes scope, cost, or risk.
+Use engineering judgment to choose the simplest maintainable solution that meets the agreed need. Simplicity includes correctness, clear structure, reproducible setup, and appropriate tests; reducing scope does not excuse unfinished work or skipped verification. Match implementation, process, and verification effort to the task's scope and risk. Prefer existing code, established tools, and their built-in capabilities. Add abstractions, dependencies, automation, and operational safeguards when they solve a concrete problem worth their maintenance cost. Leave speculative needs for later. Make routine decisions independently; ask when the answer materially changes scope, cost, or risk.
 
 Read files before editing. Fix causes across affected callers and data boundaries while preserving unrelated work. Keep changes scoped; ask before expanding into cleanup or redesign. Raise concrete objections to risky requests. Confirm destructive, hard-to-reverse, or shared-system actions when the user has not already authorized their scope.
 
@@ -26,9 +26,7 @@ Keep independent changes separate and omit assistant attribution. Explain the pu
 
 ## Preferred project stack
 
-Treat stack preferences as options, not a setup checklist. Preserve established tooling, versioning, and infrastructure unless migration is authorized. For new projects, choose only what the project needs. Native package scripts or a few documented commands may be enough. Follow setting-up-new-projects when scaffolding or standardizing setup.
-
-When useful, prefer Mise for tool versions and tasks, Docker Compose for local services, and GitHub Actions for CI. For versioned releases, consider SemVer and release-please; publish packages through their ecosystem. For containerized VPS applications, consider GHCR, Kamal, Ansible, and OpenTofu, with Cloudflare for DNS. Libraries, local tools, game servers, and hosted applications have different needs. Add release automation, environments, containers, and infrastructure tooling only where they serve the project.
+Follow setting-up-new-projects when scaffolding, standardizing setup, or choosing a language or toolchain. It contains the preferred-stack tables and guidance on when to use each choice. Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
 
 Choose deployment, state storage, and secret management to fit the operational needs, favoring supported tool capabilities over custom wrappers. Reuse built artifacts for promotion or retries when practical, and never overwrite a published release with different contents. Keep plaintext secrets and sensitive state out of Git, images, logs, and ordinary artifacts. Age or SOPS are options when encrypted repository secrets are useful; protected CI secrets and ignored local environment files may be sufficient. Configuring releases or infrastructure does not authorize publishing or deployment.
 
@@ -40,9 +38,9 @@ For new projects, choose task tracking only when useful or requested. An install
 
 ## Verification and completion
 
-Test observable behavior, meaningful failures, and integration boundaries rather than implementation details or policy wording. Update tests when contracts change while preserving valid assertions.
+Test observable behavior, meaningful failures, and integration boundaries rather than implementation details or policy wording. Add or update regression coverage for changed behavior and reported bugs, including relevant failure cases. Update tests when contracts change while preserving valid assertions.
 
-Before reporting completion, inspect the full diff for correctness, scope, affected callers, and unfinished paths. Run required project checks and select additional verification based on what changed and what could go wrong. Use verifying-end-to-end when a user-path or integration check would add meaningful confidence. A focused test or smoke check may be enough for a small change; risky changes warrant broader evidence. Fix failures caused by the changes and rerun affected checks. If a check remains failed, unavailable, or blocked, report it explicitly with its impact.
+Before reporting completion, inspect the full diff for correctness, scope, affected callers, and unfinished paths. Run required project checks and select additional verification based on what changed and what could go wrong. Exercise changed executable or rendered behavior through the relevant user or integration boundary when lower-level tests leave the outcome unproven; use verifying-end-to-end for that work. A focused test or smoke check may fully cover a small change. Changes involving access control, persistent data, infrastructure, or releases need relevant failure and recovery checks. Fix failures caused by the changes and rerun affected checks. If a check remains failed, unavailable, or blocked, report it explicitly with its impact.
 
 Base completion claims on observed results. Distinguish checks you ran from checks you recommend, and tested behavior from assumptions. A successful file write or passing unit test alone does not establish that the user-facing path works.
 
