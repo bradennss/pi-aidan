@@ -63,6 +63,54 @@ type fixture struct {
 	api  *process
 }
 
+func parseTestDatabaseConfig(databaseURL string) (*pgxpool.Config, error) {
+	cfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid test database configuration")
+	}
+	// The test runner creates databases only on this example's dedicated local server.
+	if cfg.ConnConfig.Host != "127.0.0.1" || cfg.ConnConfig.Port != 55434 || cfg.ConnConfig.User != "monorepo_local" || cfg.ConnConfig.Database != "monorepo_dev" {
+		return nil, fmt.Errorf("TEST_DATABASE_URL must use monorepo_local@127.0.0.1:55434/monorepo_dev")
+	}
+	for _, fallback := range cfg.ConnConfig.Fallbacks {
+		if fallback.Host != "127.0.0.1" || fallback.Port != 55434 {
+			return nil, fmt.Errorf("TEST_DATABASE_URL fallbacks must use 127.0.0.1:55434")
+		}
+	}
+	return cfg, nil
+}
+
+func TestParseTestDatabaseConfig(t *testing.T) {
+	const localURL = "postgresql://monorepo_local:disposable-local-only@127.0.0.1:55434/monorepo_dev"
+	for _, tc := range []struct {
+		name         string
+		url          string
+		wantError    bool
+		wantFallback bool
+	}{
+		{name: "local without TLS", url: localURL + "?sslmode=disable"},
+		{name: "same-target TLS fallback", url: localURL + "?sslmode=prefer", wantFallback: true},
+		{name: "same-target host and TLS fallbacks", url: localURL + "?host=127.0.0.1,127.0.0.1&port=55434&sslmode=prefer", wantFallback: true},
+		{name: "nonlocal fallback", url: localURL + "?host=127.0.0.1,db.example&port=55434&sslmode=disable", wantError: true},
+		{name: "wrong-port fallback", url: localURL + "?host=127.0.0.1,127.0.0.1&port=55434,5432&sslmode=disable", wantError: true},
+		{name: "nonlocal primary", url: localURL + "?host=db.example&sslmode=disable", wantError: true},
+		{name: "wrong primary port", url: localURL + "?port=5432&sslmode=disable", wantError: true},
+		{name: "wrong user", url: localURL + "?user=other&sslmode=disable", wantError: true},
+		{name: "wrong database", url: localURL + "?dbname=other&sslmode=disable", wantError: true},
+		{name: "malformed URL", url: "postgresql://monorepo_local@127.0.0.1:invalid/monorepo_dev", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := parseTestDatabaseConfig(tc.url)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("configuration rejected = %t, want %t", err != nil, tc.wantError)
+			}
+			if tc.wantFallback && len(cfg.ConnConfig.Fallbacks) == 0 {
+				t.Fatal("allowed fixture must exercise a parsed fallback")
+			}
+		})
+	}
+}
+
 func setup(t *testing.T) *fixture {
 	t.Helper()
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
@@ -71,13 +119,9 @@ func setup(t *testing.T) *fixture {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	t.Cleanup(cancel)
-	cfg, err := pgxpool.ParseConfig(databaseURL)
+	cfg, err := parseTestDatabaseConfig(databaseURL)
 	if err != nil {
-		t.Fatal("invalid test database configuration")
-	}
-	// The test runner creates databases only on this example's dedicated local server.
-	if cfg.ConnConfig.Host != "127.0.0.1" || cfg.ConnConfig.Port != 55434 || cfg.ConnConfig.User != "monorepo_local" || cfg.ConnConfig.Database != "monorepo_dev" {
-		t.Fatal("TEST_DATABASE_URL must use monorepo_local@127.0.0.1:55434/monorepo_dev")
+		t.Fatal(err)
 	}
 	admin, err := pgxpool.NewWithConfig(ctx, cfg.Copy())
 	if err != nil {
