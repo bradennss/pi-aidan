@@ -8,7 +8,7 @@
 	}
 	handle {
 		basic_auth {
-			demo {$LOCAL_AUTH_HASH}
+			{$BASIC_AUTH_USER:demo} {$BASIC_AUTH_HASH}
 		}
 		handle /api/* {
 			reverse_proxy api:8080

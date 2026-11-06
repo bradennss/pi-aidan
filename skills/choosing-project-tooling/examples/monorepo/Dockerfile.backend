@@ -10,7 +10,16 @@ RUN GOBIN=/out CGO_ENABLED=0 go install -tags='no_clickhouse,no_mssql,no_mysql,n
     GOBIN=/out CGO_ENABLED=0 go install github.com/riverqueue/river/cmd/river@v0.51.1
 
 FROM debian:trixie-slim AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/ /usr/local/bin/
 COPY db/migrations /migrations
 USER 65532:65532
+ARG REVISION=local
+LABEL org.opencontainers.image.revision=$REVISION
+
+FROM runtime AS api
+HEALTHCHECK --interval=2s --timeout=3s --start-period=5s CMD curl --fail --silent http://127.0.0.1:8080/up >/dev/null || exit 1
 CMD ["api"]
+
+FROM runtime AS worker
+CMD ["worker"]

@@ -76,3 +76,89 @@ dev: setup
 
 [parallel]
 _dev: api worker web
+
+infra-validate:
+    tofu -chdir=infra fmt -check
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra init -backend=false -input=false -lockfile=readonly
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra validate
+
+# Read-only production planning still needs authorized credentials and current state.
+infra-plan:
+    sops exec-env secrets/state.enc.yaml 'sops exec-env secrets/infra.enc.yaml "tofu -chdir=infra init -input=false -lockfile=readonly && tofu -chdir=infra plan -input=false"'
+
+# Only native-encrypted state may be persisted or uploaded.
+verify-state:
+    jq -e 'keys == ["encrypted_data", "encryption_version", "lineage", "meta", "serial"] and (.encrypted_data | type == "string" and length > 0)' infra/production.tfstate >/dev/null
+    tofu -chdir=infra state pull >/dev/null
+
+# CI state writer. Retain verified ciphertext before committing; never rebase state.
+persist-state: verify-state
+    mkdir -p .recovery
+    cp infra/production.tfstate .recovery/production.tfstate
+    git add -- infra/production.tfstate
+    if ! git diff --cached --quiet -- infra/production.tfstate; then \
+        git -c user.name='Infrastructure state' -c user.email='infra@users.noreply.github.com' commit --only -m 'Persist encrypted infrastructure state [skip ci]' -- infra/production.tfstate && \
+        git push origin HEAD:main; \
+    fi
+
+install-host:
+    cd ansible && ansible-galaxy collection install -r requirements.yml -p collections
+
+host-check:
+    cd ansible && ansible-playbook --syntax-check playbook.yml
+
+ci-test:
+    act push -W .github/workflows/check.yml -j check --secret-file /dev/null --var-file /dev/null --env-file /dev/null --input-file /dev/null
+
+# Local-only failure/recovery rehearsal. Creates no cloud resources.
+test-operations:
+    node --test ops/operations.test.mjs
+
+
+# Disposable local captures only. Production uses database-backup.service.
+backup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="${BACKUP_DATABASE:-monorepo_dev}"
+    [[ "$name" =~ ^monorepo_(dev|test_[a-z0-9]+)$ ]]
+    umask 077
+    dump=$(mktemp -d)
+    trap 'rm -rf "$dump"' EXIT
+    docker compose exec -T db pg_dump -U monorepo_local -d "$name" --format=custom --no-owner --no-privileges > "$dump/reports.dump"
+    (cd "$dump" && restic backup reports.dump --tag monorepo-postgres --host monorepo-local)
+
+# Native createdb refuses existing targets. No overwrite/clean/drop option.
+[positional-arguments]
+restore database_url:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    url="$1"
+    [[ "$url" =~ ^postgresql://monorepo_local:disposable-local-only@127\.0\.0\.1:55434/(monorepo_restore_[a-z0-9]+)$ ]]
+    name="${BASH_REMATCH[1]}"
+    umask 077
+    dump=$(mktemp -d)
+    trap 'rm -rf "$dump"' EXIT
+    restic dump --tag monorepo-postgres --host monorepo-local latest reports.dump > "$dump/reports.dump"
+    docker compose exec -T db createdb -U monorepo_local "$name"
+    docker compose exec -T db pg_restore -U monorepo_local -d "$name" --exit-on-error --no-owner --no-privileges < "$dump/reports.dump"
+    river migrate-up --database-url "$url"
+
+# Includes additive compatibility, native restic and real API/worker resumption.
+test-recovery: db-up
+    TEST_DATABASE_URL='{{ dev_database }}' go test ./test -run TestAdditiveMigrationBackupAndPendingResumption -count=1 -v
+    node --test ops/recovery.test.mjs
+
+build-images revision:
+    docker build --target api --build-arg REVISION={{revision}} -f Dockerfile.backend -t monorepo-api:{{revision}} .
+    docker build --target worker --build-arg REVISION={{revision}} -f Dockerfile.backend -t monorepo-worker:{{revision}} .
+    docker build --build-arg REVISION={{revision}} -f Dockerfile.web -t monorepo-web:{{revision}} .
+
+# Remote mutation: migration hook -> compatible API -> worker -> web, not atomic.
+[positional-arguments]
+deploy revision:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    test "${DEPLOY_AUTHORIZED:-}" = true
+    export REVISION="$1"
+    printf '%s' "$REVISION" | grep -Eq '^[0-9a-f]{40}$'
+    sops exec-env secrets/deploy.enc.yaml 'kamal deploy -c config/deploy.api.yml --skip-push --version="$REVISION" && kamal deploy -c config/deploy.worker.yml --skip-push --version="$REVISION" && kamal deploy -c config/deploy.web.yml --skip-push --version="$REVISION"'

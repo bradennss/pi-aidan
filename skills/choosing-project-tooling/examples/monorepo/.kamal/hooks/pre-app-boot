@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Native deploy has pulled this image and holds this service's Kamal lock.
+test "$KAMAL_LOCK" = true
+test "$KAMAL_HOSTS" = "$DEPLOY_HOST"
+printf '%s' "$KAMAL_VERSION" | grep -Eq '^[0-9a-f]{40}$'
+printf '%s' "$IMAGE_REPOSITORY" | grep -Eq '^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$'
+case "$KAMAL_SERVICE" in
+  monorepo-web) exit 0 ;;
+  monorepo-api) service=api; role=web ;;
+  monorepo-worker) service=worker; role=workers ;;
+  *) exit 1 ;;
+esac
+test "${KAMAL_ROLES:-$role}" = "$role"
+ssh -F "$SSH_CONFIG_FILE" -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=2 "deploy@$DEPLOY_HOST" sh -s -- "ghcr.io/$IMAGE_REPOSITORY-$service:$KAMAL_VERSION" "$service" "$role" <<'REMOTE'
+set -eu
+image=$1
+service=$2
+role=$3
+docker image inspect "$image" >/dev/null
+# Additive migrations run before API/worker replacement; old readers/writers stay compatible.
+if [ "$service" = api ]; then
+  docker run --pull=never --rm --network kamal --env-file /etc/monorepo/migration.env --memory 512m --cpus 1 --pids-limit 128 "$image" sh -ec 'goose -dir /migrations postgres "$DATABASE_URL" up; river migrate-up --database-url "$DATABASE_URL"'
+fi
+# Avoid overlapping private API DNS aliases and bound worker replacement downtime.
+writers=$(docker ps --filter "label=service=monorepo-$service" --filter "label=role=$role" -q)
+if [ -n "$writers" ]; then
+  docker stop --time 30 $writers >/dev/null
+fi
+test -z "$(docker ps --filter "label=service=monorepo-$service" --filter "label=role=$role" -q)"
+REMOTE

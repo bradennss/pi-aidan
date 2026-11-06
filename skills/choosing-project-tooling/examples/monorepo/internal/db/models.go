@@ -15,6 +15,7 @@ type Report struct {
 }
 
 type ReportResult struct {
-	ReportID  pgtype.UUID
-	WordCount int32
+	ReportID    pgtype.UUID
+	WordCount   int32
+	CompletedAt pgtype.Timestamptz
 }

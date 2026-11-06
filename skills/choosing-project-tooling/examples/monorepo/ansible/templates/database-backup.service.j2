@@ -1,0 +1,22 @@
+[Unit]
+Description=Consistent PostgreSQL snapshot to encrypted off-host restic
+Requires=docker.service
+After=docker.service network-online.target
+OnFailure=monorepo-alert.service
+
+[Service]
+Type=oneshot
+UMask=0077
+EnvironmentFile=/etc/monorepo/backup.env
+RuntimeDirectory=monorepo-backup
+RuntimeDirectoryMode=0700
+WorkingDirectory={{ backup_directory | default('/run/monorepo-backup') }}
+TimeoutStartSec=1h
+ExecStart=/bin/sh -ec 'docker exec monorepo-api-db pg_dump -U monorepo -d monorepo --format=custom --no-owner --no-privileges > reports.dump; restic backup reports.dump --tag monorepo-postgres --host monorepo-production; restic forget --tag monorepo-postgres --host monorepo-production --keep-daily 7 --keep-weekly 5 --keep-monthly 12 --prune'
+ExecStopPost=/bin/rm -f {{ backup_directory | default('/run/monorepo-backup') }}/reports.dump
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths={{ backup_directory | default('/run/monorepo-backup') }} /var/cache/monorepo-restic
+Environment=RESTIC_CACHE_DIR=/var/cache/monorepo-restic

@@ -8,3 +8,11 @@ bin/
 **/*.sql
 go.sum
 go.mod
+
+pnpm-lock.yaml
+*.tsbuildinfo
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/*.tfstate*
+ansible/collections/
+.recovery/

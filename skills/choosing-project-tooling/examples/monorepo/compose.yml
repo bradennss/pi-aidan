@@ -32,6 +32,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      target: api
     environment: &gateway-env
       DATABASE_URL: postgresql://monorepo_local:disposable-local-only@gateway-db:5432/monorepo_gateway
     command:
@@ -47,6 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      target: api
     environment:
       <<: *gateway-env
       API_ADDR: ":8080"
@@ -58,6 +60,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
+      target: worker
     environment: *gateway-env
     command: ["worker"]
     depends_on:
@@ -69,7 +72,7 @@ services:
       dockerfile: Dockerfile.web
     environment:
       # Disposable local fixture only: demo / disposable-local-only.
-      LOCAL_AUTH_HASH: "$$2a$$14$$KZqRw/4DXj8i/DzhziNuy.Qo4PxgK8ZhJE0hN83ikNG49hXC6jk6S"
+      BASIC_AUTH_HASH: "$$2a$$14$$KZqRw/4DXj8i/DzhziNuy.Qo4PxgK8ZhJE0hN83ikNG49hXC6jk6S"
     ports: ["127.0.0.1:4184:80"]
     depends_on: [api, worker]
 volumes:

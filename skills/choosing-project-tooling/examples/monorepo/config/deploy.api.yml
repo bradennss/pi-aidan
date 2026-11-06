@@ -1,0 +1,53 @@
+service: monorepo-api
+image: <%= ENV.fetch("IMAGE_REPOSITORY") %>-api
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("DEPLOY_HOST") %>
+    proxy: false
+    cmd: api
+    options:
+      network-alias: api
+      memory: 512m
+      cpus: 2
+      pids-limit: 256
+registry:
+  server: ghcr.io
+  username: <%= ENV.fetch("REGISTRY_USER") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+env:
+  clear:
+    API_ADDR: ":8080"
+  secret:
+    - DATABASE_URL
+builder:
+  arch: amd64
+  dockerfile: Dockerfile.backend
+  target: api
+ssh:
+  user: deploy
+  config: <%= ENV.fetch("SSH_CONFIG_FILE") %>
+  forward_agent: false
+retain_containers: 3
+deploy_timeout: 90
+accessories:
+  db:
+    image: postgres:18.6-trixie@sha256:bd5dfa494a5a259704365813dbfa5fa6b3e69be7348d43b547f540c730478583
+    host: <%= ENV.fetch("DEPLOY_HOST") %>
+    env:
+      clear:
+        POSTGRES_USER: monorepo
+        POSTGRES_DB: monorepo
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql
+    options:
+      memory: 3g
+      cpus: 2
+      pids-limit: 256
+      health-cmd: pg_isready -U monorepo -d monorepo
+      health-interval: 5s
+      health-timeout: 3s
+      health-retries: 12

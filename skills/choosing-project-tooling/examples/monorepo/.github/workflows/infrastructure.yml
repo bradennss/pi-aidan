@@ -1,0 +1,128 @@
+name: Infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        type: choice
+        options: [plan, apply, bootstrap, recover]
+        required: true
+      revision:
+        description: Exact current main commit (including state)
+        required: true
+      state_sha256:
+        description: For recover only, SHA256 of reconciled encrypted state
+      attestation:
+        description: For bootstrap/recover, type I reconciled cloud resources and encrypted state
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: production-infrastructure
+  cancel-in-progress: false
+jobs:
+  infrastructure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production-infrastructure
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OPERATION: ${{ inputs.operation }}
+      REVISION: ${{ inputs.revision }}
+      STATE_SHA256: ${{ inputs.state_sha256 }}
+      ATTESTATION: ${{ inputs.attestation }}
+      SOPS_AGE_KEY: ${{ secrets.STATE_AGE_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          cache: false
+      - name: Require trusted current configuration and restricted recovery access
+        env:
+          PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$PRIVATE" = true
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$REVISION" = "$GITHUB_SHA"
+          test "$REVISION" = "$(git rev-parse HEAD)"
+          test "$REVISION" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [ ! -f infra/production.tfstate ]; then
+            test -z "$(git log --format=%H -- infra/production.tfstate)"
+          fi
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/workflows/infrastructure.yml/runs?branch=main&per_page=100" > "$RUNNER_TEMP/history.json"
+          if [ "$OPERATION" = bootstrap ]; then
+            test "$GITHUB_RUN_NUMBER" = 1
+            test "$ATTESTATION" = 'I reconciled cloud resources and encrypted state'
+            test ! -e infra/production.tfstate
+            echo 'Bootstrap checkpoint: no apply performed' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$OPERATION" != recover ]; then
+            workflow=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/infrastructure.yml" --jq .id)
+            printf '%s' "$workflow" | grep -Eq '^[1-9][0-9]*$'
+            jq -e --argjson number "$GITHUB_RUN_NUMBER" --argjson id "$GITHUB_RUN_ID" --argjson workflow "$workflow" -f ops/prior-run.jq "$RUNNER_TEMP/history.json"
+          fi
+      - name: Initialize encrypted local backend
+        if: inputs.operation != 'bootstrap'
+        run: sops exec-env secrets/state.enc.yaml 'tofu -chdir=infra init -input=false -lockfile=readonly'
+      - name: Validate recovery checkpoint without cloud access
+        if: inputs.operation == 'recover'
+        run: |
+          test "$ATTESTATION" = 'I reconciled cloud resources and encrypted state'
+          printf '%s' "$STATE_SHA256" | grep -Eq '^[0-9a-f]{64}$'
+          test "$STATE_SHA256" = "$(sha256sum infra/production.tfstate | cut -d' ' -f1)"
+          # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
+          sops exec-env secrets/state.enc.yaml 'just verify-state'
+          test "$REVISION" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+          echo "Recovery checkpoint: $REVISION / $STATE_SHA256; no plan/apply performed" >> "$GITHUB_STEP_SUMMARY"
+      - name: Plan and optionally apply
+        id: apply
+        if: inputs.operation == 'plan' || inputs.operation == 'apply'
+        env:
+          SOPS_AGE_KEY: ${{ secrets.STATE_AGE_KEY }}
+          SOPS_AGE_KEY_FILE: /dev/null
+          INFRA_AGE_KEY: ${{ secrets.INFRA_AGE_KEY }}
+        run: |
+          # SOPS identities stay in memory, never in an artifact or GITHUB_ENV.
+          export SOPS_AGE_KEY="$SOPS_AGE_KEY
+          $INFRA_AGE_KEY"
+          # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
+          sops exec-env secrets/state.enc.yaml 'sops exec-env secrets/infra.enc.yaml '\''
+            set -eu
+            umask 077
+            tofu -chdir=infra plan -input=false -out=production.tfplan
+            test "$REVISION" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+            if [ "$OPERATION" = apply ]; then
+              tofu -chdir=infra apply -input=false production.tfplan
+            fi
+          '\'''
+      - name: Persist resulting state even after a partial apply
+        if: always() && steps.apply.outcome != 'skipped' && inputs.operation == 'apply'
+        id: persist
+        run: |
+          if [ -f infra/production.tfstate ]; then
+            # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
+            sops exec-env secrets/state.enc.yaml 'just persist-state'
+          else
+            echo 'No state produced; recovery checkpoint required before next apply' >&2
+            exit 1
+          fi
+      - name: Preserve verified encrypted recovery material
+        if: always() && steps.persist.outcome == 'failure'
+        run: |
+          test -f infra/production.tfstate
+          # shellcheck disable=SC2016 # Decrypted child environment expands these variables.
+          sops exec-env secrets/state.enc.yaml 'just verify-state'
+          mkdir -p .recovery
+          cp infra/production.tfstate .recovery/production.tfstate
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && steps.persist.outcome == 'failure'
+        with:
+          name: encrypted-state-${{ github.run_id }}
+          path: .recovery/production.tfstate
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+      - name: Remove generated plans and backups
+        if: always()
+        run: rm -f infra/production.tfplan infra/production.tfstate.backup

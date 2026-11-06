@@ -26,7 +26,7 @@ The gateway builds and serves the actual static assets and proxies `/api` to a p
 mise exec -- docker compose --profile gateway up -d --build --wait --wait-timeout 180
 ```
 
-Open <http://127.0.0.1:4184> and use username `demo` and password `disposable-local-only`. This fixture uses loopback HTTP, a disposable bcrypt hash, and its own persistent `gateway-data` volume. It is not a public deployment: production HTTPS and SOPS-managed credentials are not configured. Never use these credentials for production or expose this HTTP gateway publicly.
+Open <http://127.0.0.1:4184> and use username `demo` and password `disposable-local-only`. This fixture uses loopback HTTP, a disposable bcrypt hash, and its own persistent `gateway-data` volume. It is not a public deployment; production requires the separate HTTPS and SOPS setup below. Never use these credentials for production or expose this HTTP gateway publicly.
 
 Stop it with `mise exec -- docker compose --profile gateway down`. This preserves both local volumes. Avoid running the gateway demo and browser tests together: they deliberately use the same loopback port.
 
@@ -58,3 +58,11 @@ Database tests skip without `TEST_DATABASE_URL`. `test-integration` and `test-ra
 Goose owns `db/migrations`; sqlc reads those migrations and `db/queries` to generate `internal/db/{db,models,reports.sql}.go`. Edit SQL and regenerate rather than editing generated Go. `internal/db/connect.go` is handwritten. River owns its schema and migration history. Neither service migrates at startup.
 
 `internal/reports` creates the report and River job within one pgx transaction. `internal/jobs` stores a result under its unique report ID using `ON CONFLICT DO NOTHING`. River retries can repeat delivery; exactly-once execution is not promised. Worker shutdown allows three seconds for running jobs before River cancels their contexts. Interrupted work remains available for another worker. Local tests do not establish abrupt host-loss recovery, production hardening, or backups.
+
+## Operate in production
+
+The independent operational reference uses one Debian 13 OVH US/Vint Hill VPS, private PostgreSQL/API/worker, and only authenticated Caddy web exposed through Kamal HTTPS. CI builds three images once from the same full source SHA and deploys migrations, API, worker, then web. Updates are not atomic and downtime is possible. Full database backups include reports/results and native River jobs/journals; retries can execute work more than once.
+
+Start with [bootstrap, prerequisites, secrets, and deployment](docs/operations.md), then [backup, partial-release, database, and encrypted-state recovery](docs/recovery.md). The reference includes OpenTofu, Ansible, safe checks, and manual infrastructure workflows, but configuring them does not authorize cloud orders, publishing, live deploys, DNS changes, or notifications. A private production repository and trusted stable-egress production runner are required.
+
+Local operational checks are `just infra-validate`, `just install-host && just host-check`, `just test-operations`, `just test-recovery`, and `just ci-test`. Production credentials are never needed for these. The local restic repository is not evidence of R2 access or production recoverability. Tool/runtime installation remains mise-managed; pnpm release-age defaults are unchanged.
