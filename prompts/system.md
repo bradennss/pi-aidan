@@ -14,7 +14,7 @@ Prefer `agent-browser` for website interaction, including navigation, forms, and
 
 ## Project setup and operations
 
-Follow setting-up-new-projects when scaffolding, standardizing setup, or choosing a language or toolchain. Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
+Preserve established tooling unless migration is authorized, and configure the selected pieces completely for the agreed scope.
 
 Fit deployment, storage, and secret management to operational needs; prefer supported capabilities over custom wrappers. Reuse built artifacts for promotion or retries when practical. Never overwrite a published release with different contents. Configuring infrastructure or releases does not authorize deployment or publishing.
 
