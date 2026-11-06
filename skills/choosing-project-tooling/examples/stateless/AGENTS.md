@@ -1,40 +1,51 @@
 # Stateless checklist
 
-A [React](https://react.dev) checklist. Tasks live in memory and disappear on refresh.
+React and Vite application with in-memory task state. There is no backend or persistent storage.
 
 ## Setup
 
-Install [mise](https://mise.jdx.dev/getting-started.html) and activate it for your shell. From the project directory:
+Use [mise](https://mise.jdx.dev/getting-started.html) to install the project's tools. From the project directory:
 
 ```sh
 mise trust
 mise install
 just install
-just install-browser
 ```
 
-`just install` uses the frozen lockfile. Browser tests need Chromium; on Linux, also install [Playwright's system libraries](https://playwright.dev/docs/intro#system-requirements). Without shell activation, prefix just commands with `mise exec --`.
+If mise is not activated in the shell, prefix commands with `mise exec --`.
 
-## Working on the checklist
-
-Use mise for pinned tooling, pnpm for dependencies, and the recipes in `justfile` for tasks. Preserve the small, accessible UI; adding persistence, a backend, authentication, or deployment needs approval.
-
-Keep secrets and generated output out of Git. Do not bypass dependency-install policies or perform provisioning, deployment, publishing, or external-account changes without authorization.
-
-## Layout
-
-- `src/App.tsx` owns task state and validation; `src/App.test.tsx` tests interactions.
-- `src/main.tsx` mounts the app; `src/styles.css` defines page layout.
-- `src/components/arc/` holds committed UI components and shared tokens.
-- `test/browser.spec.ts` verifies the built app through Playwright.
-- `justfile` exposes setup, development, formatting, and verification tasks.
-
-## Verifying changes
-
-Run `just check` for every change. Use `just format` to fix formatting. For executable or rendered changes, also run the build and browser tests:
+## Development and testing
 
 ```sh
+just dev
 just check
 just build
+```
+
+For a focused component test run:
+
+```sh
+pnpm exec vitest run src/App.test.tsx
+```
+
+For browser tests:
+
+```sh
+just install-browser
 just test-browser
 ```
+
+On Linux, Playwright also needs its [system libraries](https://playwright.dev/docs/intro#system-requirements). Browser tests build production assets and start their own server on port 4173. Leave that port free; the runner does not reuse an existing server.
+
+To run one browser scenario across the configured viewports:
+
+```sh
+pnpm exec playwright test -g refresh_starts_empty
+```
+
+## Making changes
+
+- Reuse the Arc components and design tokens for UI changes. Preserve accessible labels and keyboard operation.
+- Update behavioral tests alongside changed interactions. Component tests live beside the app; browser tests cover the built page, including reset on refresh.
+- Run `just check` after changes. For application or build changes, also run `just build` and `just test-browser`.
+- If a required check cannot run, report the missing prerequisite and the unverified behavior. Component tests do not replace browser verification.
