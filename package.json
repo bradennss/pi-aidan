@@ -11,6 +11,14 @@
       "default": "./index.ts"
     }
   },
+  "files": [
+    "index.ts",
+    "src",
+    "prompts",
+    "skills",
+    "skills/choosing-project-tooling/examples/*/.gitignore",
+    "!skills/**/node_modules/**"
+  ],
   "engines": {
     "node": ">=22.19.0"
   },
