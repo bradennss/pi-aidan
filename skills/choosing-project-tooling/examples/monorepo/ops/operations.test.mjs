@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -30,6 +31,96 @@ function ok(cwd, command, args) {
   assert.equal(result.status, 0, result.stderr);
   return result.stdout;
 }
+
+test("SOPS child environment preserves bcrypt and dollar-containing secrets through native Kamal loading", () => {
+  const dir = mkdtempSync(join(tmpdir(), "monorepo-secrets-"));
+  const values = {
+    KAMAL_REGISTRY_PASSWORD:
+      'registry-$NATIVE_SECRET_TRAP-${NATIVE_SECRET_UNSET}-$(touch evaluated)-`touch evaluated`-"quoted"',
+    DATABASE_URL:
+      "postgresql://fixture:encoded%24password@fixture-db:5432/fixture",
+    POSTGRES_PASSWORD:
+      'database-$NATIVE_SECRET_TRAP-${NATIVE_SECRET_UNSET}-"\\\\tail',
+    BASIC_AUTH_USER: "fixture-user",
+    BASIC_AUTH_HASH:
+      "$2a$14$KZqRw/4DXj8i/DzhziNuy.Qo4PxgK8ZhJE0hN83ikNG49hXC6jk6S",
+  };
+  const kamalHome = ok(root, "mise", ["where", "gem:kamal"]).trim();
+  const childEnv = {
+    ...process.env,
+    GEM_HOME: join(kamalHome, "libexec"),
+    GEM_PATH: join(kamalHome, "libexec"),
+    SOPS_AGE_KEY: "",
+    SOPS_AGE_KEY_FILE: join(dir, "identity.agekey"),
+    NATIVE_SECRET_TRAP: "must-not-expand",
+  };
+  delete childEnv.NATIVE_SECRET_UNSET;
+  const execute = (command, args, input) => {
+    const result = spawnSync(command, args, {
+      cwd: dir,
+      env: childEnv,
+      input,
+      encoding: "utf8",
+      timeout: 30_000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  try {
+    mkdirSync(join(dir, ".kamal"));
+    mkdirSync(join(dir, "secrets"));
+    cpSync(join(root, ".kamal/secrets"), join(dir, ".kamal/secrets"));
+    execute("age-keygen", ["-o", childEnv.SOPS_AGE_KEY_FILE]);
+    const recipient = execute("age-keygen", [
+      "-y",
+      childEnv.SOPS_AGE_KEY_FILE,
+    ]).trim();
+    const encrypted = execute(
+      "sops",
+      [
+        "--encrypt",
+        "--input-type",
+        "json",
+        "--output-type",
+        "yaml",
+        "--age",
+        recipient,
+        "/dev/stdin",
+      ],
+      JSON.stringify(values),
+    );
+    writeFileSync(join(dir, "secrets/deploy.enc.yaml"), encrypted, {
+      mode: 0o600,
+    });
+    writeFileSync(join(dir, "expected.json"), JSON.stringify(values), {
+      mode: 0o600,
+    });
+    // Compare inside the native loader process without printing secret values on failure.
+    writeFileSync(
+      join(dir, "verify.rb"),
+      `require "json"
+require "kamal"
+expected = JSON.parse(File.read("expected.json"))
+actual = Kamal::Secrets.new.to_h
+abort "Unexpected native Kamal secret keys" unless actual.keys.sort == expected.keys.sort
+changed = expected.keys.reject { |key| actual.fetch(key).b == expected.fetch(key).b }
+abort "Secret bytes changed for: #{changed.join(', ')}" unless changed.empty?
+`,
+      { mode: 0o600 },
+    );
+    assert.equal(
+      execute("sops", [
+        "exec-env",
+        "secrets/deploy.enc.yaml",
+        "ruby verify.rb",
+      ]),
+      "",
+    );
+    assert.equal(existsSync(join(dir, "evaluated")), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test("partial apply persists encrypted state; rejected push retains recovery; reconciliation preserves mutation", () => {
   const dir = mkdtempSync(join(tmpdir(), "monorepo-state-"));
