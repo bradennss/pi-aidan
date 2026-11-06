@@ -1,4 +1,15 @@
 node_modules/
 dist/
-playwright-report/
 test-results/
+playwright-report/
+.env*
+*.agekey
+secrets/*.plain.*
+infra/.terraform/
+infra/*.tfplan
+infra/*.tfstate*
+!infra/production.tfstate
+infra/crash.*
+ansible/inventory.generated.json
+ansible/collections/
+.recovery/

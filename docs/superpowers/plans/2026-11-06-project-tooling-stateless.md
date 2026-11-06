@@ -48,12 +48,10 @@
 
 - Create: `skills/choosing-project-tooling/examples/stateless/{Dockerfile,Caddyfile,.dockerignore,.gitignore,.actrc,README.md}`.
 - Create remaining shared operational contract files beneath `skills/choosing-project-tooling/examples/stateless/`.
-- Create: `skills/choosing-project-tooling/examples/stateless/test/container.spec.ts` for HTTP behavior against an already started container.
 
 **Interfaces:** Consumes Task 1's build; produces HTTP `/` and `/up` on container port 80, with `/up` returning 200. Adds operational tasks from the parent contract. No application backup resources.
 
-- [ ] Write container smoke checks: `/up` returns 200; `/` serves the built app; a direct client-side route resolves to the application; a missing asset is not misreported as HTML success. Run against an empty/missing image and observe the expected failure.
-- [ ] Implement multi-stage image and Caddy routing. Build with `docker build -t aidan-stateless:local .`; run with a disposable container name and loopback-only host port. Run smoke checks and Playwright against the served production assets.
+- [ ] Implement the multi-stage image and Caddy routing. Build with `docker build -t aidan-stateless:local .`; verify startup and HTTP responses with direct Docker/curl commands as needed, without adding a separate container test suite or dedicated test machinery. Keep normal application browser tests unchanged.
 - [ ] Implement all parent operational files/procedures for the stateless VPS, DNS, host, SOPS, encrypted state, and build-once automatic deployment. Do not add R2 or data backup machinery to this example.
 - [ ] Run infrastructure/Ansible/workflow checks and `just ci-test`. Rehearse partial apply/state-push failures with disposable local state; verify no plaintext state enters outputs.
 - [ ] Document and, only with authorization, exercise PR denial, current-revision deployment ordering, prebuilt-image retry, and rollback on GitHub/disposable VPS. Otherwise explicitly mark these boundaries unverified.

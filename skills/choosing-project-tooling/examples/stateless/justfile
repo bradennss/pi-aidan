@@ -22,3 +22,31 @@ install-browser:
 
 test-browser:
     pnpm run test-browser
+
+infra-validate:
+    tofu -chdir=infra fmt -check
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra init -backend=false -input=false -lockfile=readonly
+    TF_VAR_state_passphrase=local-validation-only-not-a-production-key tofu -chdir=infra validate
+
+# Read-only production planning still needs authorized credentials and current state.
+infra-plan:
+    sops exec-env secrets/state.enc.yaml 'sops exec-env secrets/infra.enc.yaml "tofu -chdir=infra init -input=false -lockfile=readonly && tofu -chdir=infra plan -input=false"'
+
+install-host:
+    cd ansible && ansible-galaxy collection install -r requirements.yml -p collections
+
+host-check:
+    cd ansible && ansible-playbook --syntax-check playbook.yml
+
+ci-test:
+    act push -W .github/workflows/check.yml -j check --secret-file /dev/null --var-file /dev/null --env-file /dev/null --input-file /dev/null
+
+# Local-only failure/recovery rehearsal. Creates no cloud resources.
+test-operations:
+    node --test ops/operations.test.mjs
+
+# Remote mutation. Explicit authorization and operator SSH setup are required.
+deploy revision:
+    test "${DEPLOY_AUTHORIZED:-}" = true
+    printf '%s' '{{revision}}' | grep -Eq '^[0-9a-f]{40}$'
+    sops exec-env secrets/deploy.enc.yaml 'kamal deploy --skip-push --version={{revision}}'

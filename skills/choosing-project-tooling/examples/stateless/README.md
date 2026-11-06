@@ -33,3 +33,9 @@ just test-browser
 The tests build the app and exercise it in desktop and mobile-sized Chromium.
 
 On Linux, install [Playwright's system libraries](https://playwright.dev/docs/intro#system-requirements) separately.
+
+## Operations
+
+Run local-safe workflow checks with `just ci-test` (Docker required). See [operations](docs/operations.md) for production prerequisites, deployment, and recovery.
+
+The reference uses [OpenTofu](https://opentofu.org/docs/language/state/encryption/), [OVHcloud US](https://us.ovhcloud.com/vps/), [Cloudflare DNS](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs/resources/dns_record), [Ansible](https://docs.ansible.com/), [SOPS](https://getsops.io/docs/), and [Kamal](https://kamal-deploy.org/docs/). [just](https://just.systems/man/en/) exposes commands; [act](https://nektosact.com/usage/runners.html) runs the safe CI job locally.

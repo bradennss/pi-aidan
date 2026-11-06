@@ -1,0 +1,27 @@
+#!/usr/sbin/nft -f
+# Own only this table. Never flush Docker's iptables-nft tables.
+destroy table inet stateless
+table inet stateless {
+  chain input {
+    type filter hook input priority -10; policy drop;
+    ct state established,related accept
+    iifname "lo" accept
+    ip protocol icmp accept
+    meta l4proto ipv6-icmp accept
+{% set ipv4 = admin_cidrs | reject('search', ':') | list %}
+{% set ipv6 = admin_cidrs | select('search', ':') | list %}
+{% if ipv4 %}
+    ip saddr { {{ ipv4 | join(', ') }} } tcp dport 22 accept
+{% endif %}
+{% if ipv6 %}
+    ip6 saddr { {{ ipv6 | join(', ') }} } tcp dport 22 accept
+{% endif %}
+    tcp dport { 80, 443 } accept
+  }
+  chain forward {
+    type filter hook forward priority -10; policy accept;
+    iifname "{{ lookup('env', 'PUBLIC_INTERFACE') }}" ct state established,related accept
+    iifname "{{ lookup('env', 'PUBLIC_INTERFACE') }}" meta l4proto tcp ct original proto-dst { 80, 443 } accept
+    iifname "{{ lookup('env', 'PUBLIC_INTERFACE') }}" drop
+  }
+}

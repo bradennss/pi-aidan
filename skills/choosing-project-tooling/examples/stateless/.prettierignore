@@ -1,5 +1,10 @@
 node_modules/
-pnpm-lock.yaml
 dist/
-playwright-report/
 test-results/
+playwright-report/
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/*.tfstate*
+ansible/collections/
+.recovery/
+pnpm-lock.yaml

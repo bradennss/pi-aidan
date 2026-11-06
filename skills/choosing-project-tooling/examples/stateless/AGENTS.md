@@ -49,3 +49,5 @@ pnpm exec playwright test -g refresh_starts_empty
 - Update behavioral tests alongside changed interactions. Component tests live beside the app; browser tests cover the built page, including reset on refresh.
 - Run `just check` after changes. For application or build changes, also run `just build` and `just test-browser`.
 - If a required check cannot run, report the missing prerequisite and the unverified behavior. Component tests do not replace browser verification.
+
+Operational changes also require `just infra-validate`, `just install-host`, `just host-check`, `actionlint .github/workflows/*.yml`, and `just test-operations`. Run `just ci-test` with Docker for the local-safe CI job. Read [operations](docs/operations.md) before changing deployment or encrypted-state handling; local checks do not establish GitHub permissions or host hardening.

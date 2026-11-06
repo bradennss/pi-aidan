@@ -36,7 +36,7 @@ Remove the `Project setup and operations` section from `prompts/system.md`. Move
 
 ## Infrastructure and ownership
 
-Use OVHcloud US VPSs, initially in Vint Hill. The user's `VPS Configurator.pdf` is sizing context, not a live catalog or price guarantee. Use monthly no-commitment billing and an explicitly tested Ubuntu LTS image available in the US catalog.
+Use OVHcloud US VPSs, initially in Vint Hill. The user's `VPS Configurator.pdf` is sizing context, not a live catalog or price guarantee. Use monthly no-commitment billing and Debian 13, verifying its current US catalog identifier before provisioning.
 
 Starting sizes, subject to workload verification:
 
