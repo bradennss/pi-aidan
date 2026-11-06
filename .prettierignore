@@ -2,8 +2,4 @@ node_modules
 pnpm-lock.yaml
 *.tgz
 .superpowers/
-**/node_modules/
-**/pnpm-lock.yaml
-**/dist/
-**/playwright-report/
-**/test-results/
+skills/choosing-project-tooling/examples/
