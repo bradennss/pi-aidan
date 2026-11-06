@@ -1,0 +1,52 @@
+# All credentials and ports here are disposable local fixtures, never production.
+dev_database := "postgresql://stateful_local:disposable-local-only@127.0.0.1:55432/stateful_dev"
+test_database := "postgresql://stateful_local:disposable-local-only@127.0.0.1:55433/stateful_test"
+
+default:
+    @just --list
+
+install:
+    pnpm install --frozen-lockfile
+
+db-up:
+    docker compose --project-name stateful-task-tracker --file compose.yml up -d --wait --wait-timeout 60 db
+
+dev: db-up db-migrate
+    DATABASE_URL='{{dev_database}}' pnpm run dev
+
+# Production migrations require an explicitly supplied DATABASE_URL.
+db-migrate:
+    DATABASE_URL="${DATABASE_URL:-{{dev_database}}}" pnpm run db-migrate
+
+db-generate:
+    DATABASE_URL='{{dev_database}}' pnpm run db-generate
+
+test-db-up:
+    docker compose --project-name stateful-task-tracker --file compose.yml up -d --wait --wait-timeout 60 test-db
+
+check: test-db-up
+    DATABASE_URL='{{test_database}}' pnpm run check
+
+format:
+    pnpm run format
+
+build:
+    pnpm run build
+
+install-browser:
+    pnpm exec playwright install chromium
+
+# Real PostgreSQL service tests migrate their own guarded test database.
+test-integration: test-db-up
+    DATABASE_URL='{{test_database}}' pnpm exec vitest run test/persistence.test.ts
+    docker compose --project-name stateful-task-tracker --file compose.yml up -d --build --force-recreate --wait --wait-timeout 90 app gateway
+    DATABASE_URL='{{test_database}}' pnpm exec playwright test --project=integration
+
+test-browser: test-db-up
+    DATABASE_URL='{{test_database}}' pnpm run db-migrate
+    docker compose --project-name stateful-task-tracker --file compose.yml up -d --build --force-recreate --wait --wait-timeout 90 app gateway
+    DATABASE_URL='{{test_database}}' pnpm run test-browser
+
+# Stops this example's services only; volumes and tasks are retained.
+stop:
+    docker compose --project-name stateful-task-tracker --file compose.yml --profile test down
