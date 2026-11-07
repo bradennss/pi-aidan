@@ -16,7 +16,6 @@
     "src",
     "prompts",
     "skills",
-    "skills/choosing-project-tooling/examples/*/.gitignore",
     "!skills/**/node_modules/**"
   ],
   "engines": {
@@ -30,8 +29,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --dir test",
     "test:watch": "vitest --dir test",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm test",
-    "prepare": "husky"
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm test"
   },
   "pi": {
     "extensions": [
@@ -52,7 +50,6 @@
     "@types/node": "^22.19.0",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
-    "husky": "^9.1.7",
     "prettier": "^3.9.6",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.67.0",

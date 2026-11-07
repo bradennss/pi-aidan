@@ -4,17 +4,7 @@ A [Pi](https://pi.dev) extension that turns Pi into a coding agent named Aidan.
 
 ## Using with Superpowers
 
-Install [Superpowers](https://github.com/obra/superpowers) alongside Aidan for brainstorming, planning, implementation, review, worktree management, and completion workflows. Aidan supplements these workflows with engineering guidance, project scaffolding, and live-stack end-to-end verification.
-
-## Layout
-
-- `index.ts` registers the `before_agent_start` and `context` handlers against the bundled `prompts/` directory.
-- `src/inject.ts` coordinates prompt loading with system and context injection.
-- `src/prompts.ts` defines, reads, wraps, and reports errors for the prompt files.
-- `src/messages.ts` builds the injected messages and finds trailing `write`/`edit` tool results.
-- `prompts/system.md`, `prompts/before-user.md`, and `prompts/after-write.md` are prompt content.
-- `skills/` holds skill folders, each with a `SKILL.md`.
-- `skills/choosing-project-tooling/` provides tooling defaults and five standalone reference projects under `examples/`.
+Install [Superpowers](https://github.com/obra/superpowers) alongside Aidan for brainstorming, planning, implementation, review, worktree management, and completion workflows.
 
 ## Verifying changes
 

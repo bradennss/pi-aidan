@@ -4,11 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: [
-      "node_modules/",
-      "**/*.tgz",
-      "skills/choosing-project-tooling/examples/**",
-    ],
+    ignores: ["node_modules/", "**/*.tgz"],
   },
   {
     files: ["index.ts", "src/**/*.ts", "test/**/*.ts"],
