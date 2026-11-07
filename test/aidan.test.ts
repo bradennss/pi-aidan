@@ -173,7 +173,7 @@ describe("createHandlers", () => {
     );
   });
 
-  it("loads the bundled system guidance without adding context messages", async () => {
+  it("assembles bundled prompts without changing the source messages", async () => {
     handlers = createHandlers(PROMPTS_DIR);
     const messages = [user("Update the file."), writeResult()];
     const original = structuredClone(messages);
@@ -183,7 +183,17 @@ describe("createHandlers", () => {
 
     expect(system).toMatch(/^Host instructions\.\n\n<aidan_system>\n\n\S/);
     expect(system).toMatch(/\S\n\n<\/aidan_system>$/);
-    expect(result).toBeUndefined();
+    expect(result?.messages?.map((message) => message.role)).toEqual([
+      "user",
+      "toolResult",
+      "custom",
+    ]);
+    expect(contents(result)[0]).toMatch(/^<aidan_completion_check>\n\n\S/);
+    expect(contents(result)[0]).toMatch(/\S\n\n<\/aidan_completion_check>$/);
+    expect(result?.messages?.[2]).toMatchObject({
+      customType: "aidan-reminder",
+      display: false,
+    });
     expect(messages).toEqual(original);
     expect(warnings).toEqual([]);
   });
