@@ -1,34 +1,34 @@
 ---
 name: verifying-end-to-end
-description: Use when changing UI flows, API contracts, CLI behavior, background jobs, or service integrations, or when passing unit tests leave a user-visible outcome unproven. Also use when evaluating whether prompt or skill changes affect agent behavior.
+description: Use when tests leave a user-visible or connected-system outcome unverified, including UI, API, CLI, jobs, or integrations, or when evaluating prompt or skill behavior.
 ---
 
 # Verifying end to end
 
-Verify the delivered outcome at the smallest boundary that closes the evidence gap. Start with existing tests and documented workflows. Ask: **What could still be wrong if these checks pass?** Avoid new harnesses or unrelated services when existing tools suffice.
+## Choose the missing evidence
 
-## Choose the boundary
+Look at what the existing tests cover and how the project is normally tested, then work out what else you need to check to know the change works. If you're fixing a bug, reproduce it and check that the fix gives the expected result.
 
-| Changed outcome | Entry point |
-| --- | --- |
-| UI interaction or rendering | Browser |
-| API contract or webhook | HTTP caller |
-| CLI behavior | Executable invoked as a user |
-| Worker or scheduled job | Queue or scheduling entry point |
-| Prompt or skill behavior | Fresh agent applying the guidance to a representative task |
+- Use a browser for UI behavior or rendering.
+- Send real HTTP requests for APIs or webhooks.
+- Run a CLI as a user would.
+- Trigger workers or jobs through their queue or scheduler entry point.
+- For prompt or skill behavior, have fresh agents apply it to representative tasks.
 
-Use only the boundaries relevant to the change. A focused test or smoke check may suffice; a risky integration needs broader coverage. Prose-only edits usually need review and repository checks. Prompt loading and injection tests do not establish agent behavior; fresh-agent trials provide behavioral evidence, not proof of reliable improvement.
+Don't add a harness, start unrelated services, or test through boundaries that don't help answer the question. For example, check a CSV quoting fix by parsing exports containing commas and quotes.
 
-## Exercise the path
+Prose-only changes generally need review and repository checks instead of expensive trials. If you need to check how a prompt or skill affects agent behavior, try it with fresh agents on representative tasks. Loading and injection tests only tell you the guidance reached the agent, while agent trials show how it was used in those tasks. Treat those results as evidence for the tasks you tested, rather than assuming they apply to every task.
 
-1. **Define the gap.** Identify the outcome, expected result, and what existing checks leave unproven. For fixes, include the reported reproduction. Cover success and relevant failures; access control, persistent data, infrastructure, and releases may require denial, partial-failure, retry, or recovery checks.
-2. **Run the changed code.** Use documented commands and safe local or disposable resources. Rebuild or restart as needed. Ask before unauthorized production changes, shared-data mutations, material cost, or external notifications.
-3. **Observe the outcome.** Exercise the entry point and compare expected and actual results. Follow asynchronous work through completion and check durable effects when relevant, using bounded waits. Acceptance or a success toast alone does not prove completion.
-4. **Resolve and rerun.** Fix failures introduced by the change and rerun affected checks after relevant edits. If blocked, run independent checks and identify the untested boundary.
-5. **Clean up.** Remove task-owned fixtures and processes; preserve pre-existing resources.
+## Run and observe
 
-For a CSV quoting fix, parsing an export with commas and quotes may suffice. Use a browser against the real API if download behavior or integration is also in question.
+1. Choose cases that cover the expected result and the ways the change could fail. For changes involving authorization, persistent data, infrastructure, or releases, consider what happens when access is denied, an operation only partly succeeds, or the system needs to retry or recover.
+2. Run the changed code using the project's documented commands and safe local or disposable resources, rebuilding or restarting as needed so you're testing the current version. If a check would affect production or shared data, incur significant costs, send external notifications, or otherwise go beyond existing authorization, get permission before running it.
+3. Try the chosen entry point and compare what the user or connected system receives with the expected result. If work continues in the background, wait for it to finish within a set time limit and check any lasting effects, such as saved data. Check that the work actually completed rather than relying on an accepted request or success message.
+4. If you find failures caused by the change, fix them and rerun the affected checks. When something blocks testing, continue with the checks you can run independently and explain which part you couldn't test.
+5. When you're done, remove the fixtures and stop the processes you created for this task, leaving pre-existing resources intact.
 
-## Report the evidence
+## Report what happened
 
-State what ran, what happened, and what remains unverified. Include useful commands or artifacts, with detail proportional to risk. Distinguish real dependencies from mocks, sandboxes, and substitutes. Report unavailable agent trials or dependencies explicitly. Keep claims within observed evidence: a plan is not an executed check, and a unit test does not prove an untested user path.
+Explain what you tested, how the results compared with what you expected, and what you couldn’t verify, including any dependencies or agent trials you couldn’t run. Share commands or artifacts that help someone understand or repeat the checks, and make it clear where you used mocks, sandboxes, or other substitutes instead of real dependencies.
+
+Only claim what the checks you ran actually show, and be clear when a user flow still needs testing, even if the unit tests pass or you’ve written a plan for checking it.
