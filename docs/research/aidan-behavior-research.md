@@ -168,7 +168,7 @@ Worth testing rather than assuming:
 
 The research cannot decide the user's preferred relationship with Aidan, tolerance for unsolicited advice, preferred amount of progress reporting, desired autonomy, supported model families, or what current writing feels most wrong. Begin with concrete examples of the interaction they want to change. Then show alternative responses and choose an architecture before writing the specification.
 
-No implementation, prompt population, new runtime hooks, or behavioral validation was performed during this research.
+The research phase made no implementation changes. Subsequent approved work populated only the system prompt and ran the six paired scenarios; see [results and limitations](../evals/aidan-behavior-results.md). No new runtime hooks were added, and a clear improvement over the baseline remains unproven.
 
 ## Sources
 

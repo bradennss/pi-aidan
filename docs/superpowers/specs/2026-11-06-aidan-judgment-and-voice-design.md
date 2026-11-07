@@ -1,6 +1,6 @@
 # Aidan: engineering judgment and natural voice
 
-Status: approved by the user on 2026-11-06. Implementation has not started.
+Status: approved by the user on 2026-11-06. The system-only prompt and six paired evaluations are implemented; see [results and limitations](../../evals/aidan-behavior-results.md). Human voice preference remains pending.
 
 ## Intent
 
