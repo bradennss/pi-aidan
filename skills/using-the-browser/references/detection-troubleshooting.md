@@ -1,25 +1,27 @@
 # Detection troubleshooting with agent-browser
 
-Use for authorized browsing that encounters bot detection, or requests for stealth or “undetectable” Chrome. Start with the parent skill's availability check and named-session workflow. Read installed CLI help before using version-sensitive options.
+Use this page for authorized browsing that encounters bot detection, or for requests involving stealth or “undetectable” Chrome. Follow the parent skill's availability check and named-session workflow first. The options below can vary by version, so check the installed CLI's help before using them.
 
-## Choose the least invasive option
+## Identify the blocker before changing settings
 
-A failed HTTP fetch doesn't necessarily mean the site detected automation. When the missing content is rendered by JavaScript, ordinary browser navigation with `open` followed by `snapshot` may be enough. If manual Chrome works but headless browsing fails, try a dedicated headed system-Chrome session with its own profile. This gives you a different browser environment to test, not an assurance that automation is hidden.
+A failed HTTP fetch doesn't necessarily mean the site detected automation. If JavaScript renders the missing content, ordinary navigation with `open` followed by `snapshot` may be enough. If manual Chrome works but headless browsing fails, a dedicated headed system-Chrome session gives you a different browser environment to test. It doesn't establish that automation is hidden.
 
-When the page requires login or human verification, ask the user to complete it in the task browser and preserve that session while they do so. If they specifically want to use an existing browser, attach only to an approved CDP endpoint and pin the task tab. A named agent-browser session keeps commands organized, but it doesn't isolate cookies inside a shared Chrome instance.
+Choose the next step based on what the page shows:
 
-If local browsing still triggers detection, offer a cloud stealth provider and explain the cost and third-party data handling before proceeding. A persistent 429 or explicit access denial calls for stopping retries, respecting Retry-After, and requesting access or an API rather than escalating stealth settings to evade the limit.
+- **Login or human verification:** Ask the user to complete it in the task browser, keeping that session available while they work.
+- **A need to use an existing browser:** Attach only to a user-approved CDP endpoint and pin the task tab. A named agent-browser session organizes commands but doesn't isolate cookies within a shared Chrome instance.
+- **Detection that persists in a local browser:** Offer a cloud stealth provider, explaining the cost and third-party data handling before asking for approval.
+- **A persistent 429 or explicit access denial:** Stop retrying, respect `Retry-After`, and request access or an API. Don't escalate stealth settings to evade the limit.
 
-These options have limits because detection can involve IP reputation, browser fingerprints, account history, and interaction patterns together. Changing a user agent, patching `navigator.webdriver`, moving the cursor in a human-like way, or passing a fingerprint test doesn't establish that the target site will accept automation. Piling on arbitrary spoofing scripts and Chrome flags can also create inconsistent fingerprints that make matters worse.
+Detection can combine IP reputation, browser fingerprints, account history, and interaction patterns. That means changing one signal—such as the user agent or `navigator.webdriver`—doesn't establish that the target site will accept automation. Neither does human-like cursor movement or passing a fingerprint test. Adding arbitrary spoofing scripts and Chrome flags can make matters worse by producing an inconsistent fingerprint.
 
-## Dedicated local Chrome
+## Try a dedicated local Chrome session
 
-For local troubleshooting, launch an installed Chrome executable with a visible window and a dedicated profile outside the repository. That profile can preserve state across runs within the authorized task/account scope without exposing a personal profile through `--profile Default` or a copied directory. Using a personal profile still requires permission. Because profile directories retain credentials, keep them out of version control and avoid sharing one across concurrent browser processes.
+Launch an installed Chrome executable with a visible window and a dedicated profile outside the repository. This lets the task preserve state across runs within the authorized account and task scope without exposing a personal profile. Using `--profile Default` or copying a personal profile still requires permission.
 
-Example for macOS (verify the executable exists first; use the discovered Chrome path on other platforms):
+Profile directories retain credentials, so keep them out of version control and don't share one across concurrent browser processes. The example below uses a unique session name and an unused profile path. Verify that the executable exists first; on platforms other than macOS, substitute the discovered Chrome path.
 
 ```sh
-# Pick a unique session name and an unused dedicated profile path.
 agent-browser --session chrome-check-42 \
   --executable-path "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --headed --profile "$HOME/.agent-browser/profiles/chrome-check-42" \
@@ -31,31 +33,42 @@ agent-browser --session chrome-check-42 get text body
 agent-browser --session chrome-check-42 close
 ```
 
-Set launch options on the first command, since later commands use the browser already running in that session. Changing the executable, profile, provider, or headed mode therefore means finishing and closing the session you own, then starting a new named session. Closing the browser doesn't erase the profile's sensitive state, so leave reusable profiles intact unless deletion is authorized.
+Launch options belong on the first command because later commands connect to the browser already running in that session. To change the executable, profile, provider, or headed mode, finish and close the session you own, then start a new named session. Closing the browser doesn't erase the profile's sensitive state; leave reusable profiles intact unless deletion is authorized.
 
-A visible window also depends on having an accessible display. A remote system's virtual display may not be visible to the user; if human verification is needed, arrange an approved interactive connection rather than assuming headed mode alone lets them take over.
+Headed mode also needs a display the user can reach. A remote system's virtual display may not be visible to them, so arrange an approved interactive connection when human verification is needed rather than assuming a visible-window setting is enough.
 
-## Attach to Chrome only with permission
+## Attach to an existing Chrome browser
 
-Prefer an explicit, user-approved endpoint over broad `--auto-connect` discovery. With a supported CLI, `--pin-tab` opens a fresh tab when unbound and prevents commands from silently jumping to someone else's tab.
+Attaching exposes the browser's sessions, so get permission for a specific endpoint before connecting. Prefer that explicit endpoint over broad `--auto-connect` discovery. With a supported CLI, `--pin-tab` opens a fresh tab when unbound and keeps commands from silently jumping to someone else's tab.
+
+After the user approves the endpoint:
 
 ```sh
-# Only after the user approves this browser endpoint.
 agent-browser --session attached-check-42 --cdp 9222 --pin-tab open https://example.com
 agent-browser --session attached-check-42 snapshot
 agent-browser --session attached-check-42 get text body
 agent-browser --session attached-check-42 close
 ```
 
-The session retains its CDP connection and tab pin, but the pin controls only which tab receives commands; it doesn't isolate credentials or restrict browser access. If that tab disappears, inspect the available tabs and explicitly select or create the task tab rather than unpinning and adopting someone else's. When finished, use `close` to end the agent-browser attachment while leaving the externally owned Chrome process and unrelated tabs alone.
+The session retains its CDP connection and tab pin, but pinning only controls which tab receives commands. It doesn't isolate credentials or restrict browser access. If the task tab disappears, inspect the available tabs and explicitly select or create its replacement rather than unpinning and adopting someone else's tab.
 
-For a separately launched debugging Chrome, bind debugging to loopback and use a dedicated, non-default `--user-data-dir`. Since Chrome 136, `--remote-debugging-port` and `--remote-debugging-pipe` aren't honored against the default Chrome data directory. Newer Chrome also has interactive remote-debugging approval flows; consult current CDP docs rather than changing the user's browser settings automatically. Never expose an unauthenticated debugging port publicly: it grants control of the browser and its sessions.
+When finished, use `close` to end the agent-browser attachment. Leave the externally owned Chrome process and unrelated tabs alone.
 
-## Optional cloud stealth providers
+### Launching a separate debugging browser
 
-Before creating a paid session or sending browsing/session data to a third party, explain those consequences and ask for approval. An existing API key doesn't establish consent to either. Once use is approved, have credentials provisioned through the environment or a secret manager so keys stay out of output, shell command history, and repository files. Check the current provider documentation against the installed CLI version before launching.
+Bind debugging to loopback and use a dedicated, non-default `--user-data-dir`. An unauthenticated debugging port grants control of the browser and its sessions, so never expose it publicly.
 
-After approval, with `KERNEL_API_KEY` already provisioned:
+Since Chrome 136, `--remote-debugging-port` and `--remote-debugging-pipe` aren't honored against the default Chrome data directory. Newer Chrome also has interactive remote-debugging approval flows. Consult the current CDP documentation for the installed version rather than changing the user's browser settings automatically.
+
+## Consider a cloud stealth provider
+
+Cloud browsing can incur charges and send page or session data to a third party. Explain both consequences and get approval before creating a paid session or sending data; an existing API key doesn't establish consent.
+
+Once use is approved, provision credentials through the environment or a secret manager to keep keys out of output, shell command history, and repository files. Check the provider's current documentation against the installed CLI version before launching.
+
+### Kernel
+
+With use approved and `KERNEL_API_KEY` provisioned:
 
 ```sh
 KERNEL_STEALTH=true agent-browser --session kernel-check-42 --provider kernel open https://example.com
@@ -64,9 +77,11 @@ agent-browser --session kernel-check-42 get text body
 agent-browser --session kernel-check-42 close
 ```
 
-Kernel documents stealth as opt-in (`KERNEL_STEALTH=true`, default `false`). Its named persistent profiles must already exist; saving changes is separately controlled by `KERNEL_PROFILE_SAVE_CHANGES` (default `false`). Don't enable persistence of authenticated cloud state without approval.
+Kernel documents stealth as opt-in: `KERNEL_STEALTH` defaults to `false`, so the example enables it explicitly. Persistent profiles have separate requirements: named profiles must already exist, and saving changes is controlled by `KERNEL_PROFILE_SAVE_CHANGES`, which also defaults to `false`. Get approval before enabling persistence of authenticated cloud state.
 
-Browserless is another supported option. With `BROWSERLESS_API_KEY` provisioned and use approved:
+### Browserless
+
+With use approved and `BROWSERLESS_API_KEY` provisioned:
 
 ```sh
 BROWSERLESS_STEALTH=true BROWSERLESS_BROWSER_TYPE=chrome \
@@ -76,21 +91,37 @@ agent-browser --session browserless-check-42 get text body
 agent-browser --session browserless-check-42 close
 ```
 
-Browserless documents stealth as enabled by default and browser type as `chromium` by default; set `chrome` explicitly when Chrome is required. These are provider features, not a local `agent-browser --stealth` switch or a guarantee of bypass. Don't install a fork or launch-mutator plugin without checking its provenance, compatibility, and obtaining installation approval; plugins execute local code.
+Browserless documents stealth as enabled by default, but its default browser type is `chromium`. Set `BROWSERLESS_BROWSER_TYPE=chrome` explicitly when Chrome is required.
 
-## Challenge handling and verification
+These stealth settings are provider features, not a local `agent-browser --stealth` switch or a guarantee of access. Forks and launch-mutator plugins aren't interchangeable substitutes: plugins execute local code, so check their provenance and compatibility and obtain installation approval before using them.
 
-Use `get url`, `get title`, and a full `snapshot` or `get text body` to establish whether the browser reached the intended content or a challenge, login, or error page. A 200 response alone doesn't distinguish them. If a challenge is visibly progressing, wait for a specific expected element, text, or URL with a bounded timeout rather than repeatedly reloading or hiding the failure behind long sleeps.
+## Handle challenges and verify access
 
-When CAPTCHA or another human interaction is required, ask the user to act in the same task session instead of automatically calling a solving service. Leave the browser available while they work, since starting over may lose clearance. After they finish, take a fresh snapshot and verify the requested content itself; the challenge disappearing isn't enough to establish success.
+Inspect `get url`, `get title`, and a full `snapshot` or `get text body` to determine whether you've reached the intended content. A challenge, login screen, or error page can return a 200 response, so the status alone isn't evidence of access.
 
-If access is still blocked, report the URL, observed blocker, browser mode tried, and remaining limitation without exposing cookies, tokens, or sensitive screenshots. Once the work or handoff is finished, close only the task session.
+If a challenge is visibly progressing, wait for a specific expected element, text, or URL with a bounded timeout. Repeated reloads can interrupt that progress, while long sleeps leave you without an observable condition for success.
 
-Existing security controls also constrain which workarounds are appropriate. For example, `--allowed-domains` rejects profiles, pre-existing CDP/auto-connect, and some other stateful modes because it cannot establish containment before scripts execute. Keep a compatible fresh browser, ask for an approved alternative, or use operator-managed network isolation rather than removing an allowlist to make a workaround run. TLS validation and Chrome's sandbox should likewise remain enabled when troubleshooting detection.
+When CAPTCHA or another human interaction is required, ask the user to act in the same task session instead of automatically calling a solving service. Keep the browser available because starting over may lose clearance. After the user finishes, take a fresh snapshot and check the requested content itself; the challenge disappearing isn't enough.
 
-## Sources and support limits
+If access remains blocked, report:
 
-Research checked against installed `agent-browser 0.41.1` help and its bundled core skill. Dedicated headed system Chrome with a temporary profile was smoke-tested for navigation and text retrieval, not detection bypass or authenticated-state restoration. CDP attachment and cloud stealth were not exercised; their setup is documentation-backed, not proof of target-site clearance. Recheck after upgrades.
+- The URL and observed blocker.
+- The browser mode tried.
+- What you still couldn't verify.
+
+Keep cookies, tokens, and sensitive screenshots out of that report. Once the work or handoff is finished, close only the task session.
+
+## Preserve existing security controls
+
+A workaround still needs to fit the task's security controls. For example, `--allowed-domains` rejects profiles, pre-existing CDP/auto-connect, and some other stateful modes because it can't establish containment before scripts execute. If a proposed setup conflicts with that control, keep a compatible fresh browser, ask for an approved alternative, or use operator-managed network isolation. Don't remove the allowlist just to make the workaround run.
+
+Keep TLS validation and Chrome's sandbox enabled while troubleshooting detection. Browser access isn't a reason to weaken those protections.
+
+## Sources and verification limits
+
+The original research used installed `agent-browser 0.41.1` help and its bundled core skill. A dedicated headed system-Chrome session with a temporary profile was smoke-tested for navigation and text retrieval. That test didn't establish detection bypass or authenticated-state restoration.
+
+CDP attachment and cloud stealth weren't exercised. Their setup is backed by documentation, not a demonstration that a target site will allow access. Recheck version-sensitive behavior after upgrades.
 
 - [Chrome executable, headed mode, profiles, and launch args](https://agent-browser.dev/engines/chrome)
 - [CDP connections, auto-connect, and tab pinning](https://agent-browser.dev/cdp-mode)
