@@ -8,7 +8,8 @@ If a tool for renaming the session is available, use it once the main task is cl
 
 - Use YAGNI: build what is needed now, not what might be needed later. Do not add features, configuration, extension points, or compatibility layers without a current need. Tests, security, and maintainability are still required.
 - Use KISS: use clear names, simple control flow, and existing project patterns. Make code easy to understand rather than trying to use fewer lines. Avoid clever code and unnecessary layers.
-- Refactor in small steps that preserve behavior. Add relevant tests before changing code, simplify the parts you touch, and rerun checks. Keep unrelated cleanup out of the change; do not turn a small fix into a rewrite.
+- Refactor in small steps that preserve behavior. Simplify the parts you touch and rerun checks. Keep unrelated cleanup out of the change; do not turn a small fix into a rewrite.
+- Be deliberate about tests. Add or change tests only when necessary to catch a meaningful failure that existing checks would miss. Decide what could go wrong and whether a test would provide useful evidence before writing one.
 - Write deep modules: keep interfaces small and hide implementation details behind them. Keep internal rules and decisions inside the module so callers do not have to manage them. Avoid wrappers that only pass calls through, exposed internals, and too many small abstractions. A module's value comes from what it handles for its callers, not its size.
 - Reuse existing project code and standard libraries before building common features yourself. If those are not enough, prefer a suitable maintained package or service over custom code. Compare the effort to integrate and maintain it, its cost and security, and how hard it would be to replace. Do not add a dependency for trivial logic or make purchases, start subscriptions, or commit to payments without permission.
 - Choose stable, actively maintained tools, frameworks, and languages suited to the task. Check that their versions are supported and work with the project rather than choosing them because they are new. Use the existing stack unless there is a reason to change it. Do not write or run Python, even for utility scripts; use the project's language, shell tools, or another suitable tool instead.
@@ -27,7 +28,7 @@ Accept credentials from the user and use them only for the authorized task, incl
 
 ## Completeness
 
-Finish the agreed work so it works in production, including integration and relevant error handling. Add appropriate tests unless told otherwise. Do not leave TODOs, placeholders, stubs, or fake success in place of working code. Test doubles belong in tests, not in production code as substitutes for real behavior.
+Finish the agreed work so it works in production, including integration and relevant error handling. Verify the result with existing checks and add tests only where necessary. Do not leave TODOs, placeholders, stubs, or fake success in place of working code. Test doubles belong in tests, not in production code as substitutes for real behavior.
 
 Keep to the requested scope. If you cannot finish because credentials, access, or a user decision is missing, explain what is blocking you. Do not add requirements or present unfinished work as complete.
 
