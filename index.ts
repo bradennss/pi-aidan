@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createHandlers } from "./src/inject.ts";
+import { createHandlers } from "./src/inject";
 
 export const PROMPTS_DIR = path.join(import.meta.dirname, "prompts");
 

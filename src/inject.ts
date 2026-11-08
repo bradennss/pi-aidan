@@ -8,8 +8,8 @@ import {
   buildMessage,
   endsWithFileMutation,
   insertBeforeLastUserMessage,
-} from "./messages.ts";
-import { createPromptLoader, PROMPTS } from "./prompts.ts";
+} from "./messages";
+import { createPromptLoader, PROMPTS } from "./prompts";
 
 interface ContextEventResult {
   messages?: ContextEvent["messages"];

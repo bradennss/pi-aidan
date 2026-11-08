@@ -4,7 +4,7 @@ import {
   buildMessage,
   endsWithFileMutation,
   insertBeforeLastUserMessage,
-} from "../src/messages.ts";
+} from "../src/messages";
 
 function user(content: string): AgentMessage {
   return { role: "user", content, timestamp: 1 };

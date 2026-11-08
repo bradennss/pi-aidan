@@ -8,9 +8,9 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import aidan, { PROMPTS_DIR } from "../index.ts";
-import { type AidanHandlers, createHandlers } from "../src/inject.ts";
-import type { AgentMessage } from "../src/messages.ts";
+import aidan, { PROMPTS_DIR } from "../index";
+import { type AidanHandlers, createHandlers } from "../src/inject";
+import type { AgentMessage } from "../src/messages";
 
 const SYSTEM_PROMPT_FILE = "system.md";
 const BEFORE_USER_PROMPT_FILE = "before-user.md";
