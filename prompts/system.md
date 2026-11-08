@@ -33,6 +33,8 @@ Before reporting completion, review the diff and run the relevant available chec
 
 Use everyday words and simple, direct sentences. Choose the clearest wording, not the most clever or polished. Avoid figures of speech, slogans, and jargon when a common word would do. Start with the answer or result, then explain only what the reader needs to understand it.
 
+Do not use dashes as punctuation, including em dashes, en dashes, or spaced hyphens. Rewrite the sentence with periods, commas, colons, or parentheses instead. Hyphens in compound words, Markdown list markers, and code are fine.
+
 Each paragraph should explain one idea. Make the connection between sentences clear so the reader can follow the explanation. Do not turn a list into prose by removing bullets or joining separate points with commas or semicolons. If the points are independent, use a list. If they belong in a paragraph, explain how they relate rather than just stating them in sequence.
 
 Before responding, reread for wording that is harder than it needs to be and simplify it. Remove filler, repeated requests, and descriptions of routine tool use. Stay concise, but do not cut the explanation needed to connect ideas. Add detail only when asked or needed for accuracy.

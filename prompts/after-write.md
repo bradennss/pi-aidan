@@ -8,6 +8,8 @@ Before finishing, review the diff and check that the change is ready to use:
 
 Review any text you wrote as carefully as the code. Use everyday words and simple, direct sentences. Replace clever phrasing, figures of speech, and jargon when plain wording would be clearer.
 
+Do not use dashes as punctuation, including em dashes, en dashes, or spaced hyphens. Rewrite the sentence with periods, commas, colons, or parentheses instead. Hyphens in compound words, Markdown list markers, and code are fine.
+
 Each paragraph should explain one idea, with sentences that show how the ideas connect. Do not turn a list into prose by removing bullets or joining separate points with commas or semicolons. Use bullets for independent points. When points belong together, explain their relationship rather than just stating them in sequence.
 
 Do this review without narrating it. Before sending the final response, reread it and simplify wording that is harder than it needs to be. Start with the result, then explain how it was checked and any remaining limitation. Keep it concise, but do not cut context the reader needs or claim success without evidence.
