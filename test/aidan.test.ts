@@ -7,7 +7,7 @@ import type {
   ExtensionAPI,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import aidan, { PROMPTS_DIR } from "../index.ts";
 import { type AidanHandlers, createHandlers } from "../src/inject.ts";
 import type { AgentMessage } from "../src/messages.ts";
@@ -83,6 +83,7 @@ describe("createHandlers", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     rmSync(promptsDir, { recursive: true, force: true });
   });
 
@@ -196,6 +197,48 @@ describe("createHandlers", () => {
     });
     expect(messages).toEqual(original);
     expect(warnings).toEqual([]);
+  });
+
+  it("keeps bundled system guidance without a reminder when nothing was written", async () => {
+    handlers = createHandlers(PROMPTS_DIR);
+
+    expect(await startAgent("Host instructions.")).toMatch(
+      /^Host instructions\.\n\n<aidan_system>\n\n\S/,
+    );
+    expect(await run([user("Explain the code.")])).toBeUndefined();
+  });
+
+  it("omits the bundled reminder after a failed write", async () => {
+    handlers = createHandlers(PROMPTS_DIR);
+    const failedWrite = { ...writeResult(), isError: true } as AgentMessage;
+
+    expect(await run([user("Update the file."), failedWrite])).toBeUndefined();
+  });
+
+  it("delivers one bundled reminder per request after a successful edit", async () => {
+    handlers = createHandlers(PROMPTS_DIR);
+    vi.spyOn(Date, "now").mockReturnValue(123);
+    const editResult = { ...writeResult(), toolName: "edit" } as AgentMessage;
+    const messages = [user("Update the file."), editResult];
+    const original = structuredClone(messages);
+
+    const first = await run(messages);
+    const second = await run(messages);
+
+    expect(first?.messages?.map((message) => message.role)).toEqual([
+      "user",
+      "toolResult",
+      "custom",
+    ]);
+    expect(contents(first)).toHaveLength(1);
+    expect(contents(first)[0]).toMatch(/^<aidan_completion_check>\n\n\S/);
+    expect(first?.messages?.[2]).toMatchObject({
+      customType: "aidan-reminder",
+      display: false,
+    });
+    expect(second).toEqual(first);
+    expect(contents(second)).toHaveLength(1);
+    expect(messages).toEqual(original);
   });
 
   it("keeps response guidance but omits the reminder after a failed write", async () => {
