@@ -1,239 +1,69 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import type {
   BeforeAgentStartEvent,
-  ContextEvent,
+  BeforeAgentStartEventResult,
   ExtensionAPI,
   ExtensionContext,
+  ExtensionHandler,
 } from "@earendil-works/pi-coding-agent";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import aidan, { PROMPTS_DIR } from "../index";
-import { type AidanHandlers, createHandlers } from "../src/inject";
-import type { AgentMessage } from "../src/messages";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import aidan from "../index";
 
-const SYSTEM_PROMPT_FILE = "system.md";
-const BEFORE_USER_PROMPT_FILE = "before-user.md";
-const AFTER_WRITE_PROMPT_FILE = "after-write.md";
-
-interface ContextEventResult {
-  messages?: ContextEvent["messages"];
-}
-
-function user(content: string): AgentMessage {
-  return { role: "user", content, timestamp: 1 };
-}
-
-function writeResult(): AgentMessage {
-  return {
-    role: "toolResult",
-    toolCallId: "call-write",
-    toolName: "write",
-    content: [{ type: "text", text: "written" }],
-    isError: false,
-    timestamp: 1,
-  };
-}
-
-function contents(result: ContextEventResult | undefined): string[] {
-  return (result?.messages ?? [])
-    .filter((message) => message.role === "custom")
-    .map((message) =>
-      typeof message.content === "string"
-        ? message.content
-        : JSON.stringify(message.content),
-    );
-}
+vi.mock("node:fs/promises", () => ({ readFile: vi.fn() }));
 
 describe("aidan", () => {
-  it("registers both handlers for the bundled prompts", () => {
-    const events: string[] = [];
-    const pi = {
-      on: (event: string) => {
-        events.push(event);
-      },
-    } as unknown as ExtensionAPI;
-
-    aidan(pi);
-
-    expect(events).toEqual(["before_agent_start", "context"]);
+  let handler: ExtensionHandler<
+    BeforeAgentStartEvent,
+    BeforeAgentStartEventResult
+  >;
+  const on = vi.fn((event: string, callback: typeof handler) => {
+    handler = callback;
   });
-});
-
-describe("createHandlers", () => {
-  let promptsDir: string;
-  let warnings: string[];
-  let ctx: ExtensionContext;
-  let handlers: AidanHandlers;
 
   beforeEach(() => {
-    promptsDir = mkdtempSync(path.join(tmpdir(), "pi-aidan-"));
-    writeFileSync(path.join(promptsDir, SYSTEM_PROMPT_FILE), "");
-    writeFileSync(path.join(promptsDir, BEFORE_USER_PROMPT_FILE), "");
-    writeFileSync(path.join(promptsDir, AFTER_WRITE_PROMPT_FILE), "");
-    warnings = [];
-    ctx = {
-      ui: {
-        notify: (message: string) => {
-          warnings.push(message);
-        },
-      },
-    } as unknown as ExtensionContext;
-    handlers = createHandlers(promptsDir);
+    vi.resetAllMocks();
+    aidan({ on } as unknown as ExtensionAPI);
   });
 
-  afterEach(() => {
-    rmSync(promptsDir, { recursive: true, force: true });
-  });
-
-  function writePrompt(file: string, content: string): void {
-    writeFileSync(path.join(promptsDir, file), content);
-  }
-
-  async function run(
-    messages: AgentMessage[],
-  ): Promise<ContextEventResult | undefined> {
-    return (
-      (await handlers.context({ type: "context", messages }, ctx)) ?? undefined
+  async function startAgent() {
+    return handler(
+      { systemPrompt: "Base instructions." } as BeforeAgentStartEvent,
+      {} as ExtensionContext,
     );
   }
 
-  async function startAgent(systemPrompt: string): Promise<string | undefined> {
-    const event = {
-      type: "before_agent_start",
-      prompt: "hello",
-      systemPrompt,
-      systemPromptOptions: { cwd: promptsDir, contextFiles: [] },
-    } as unknown as BeforeAgentStartEvent;
-    const result = await handlers.beforeAgentStart(event, ctx);
-    return result?.systemPrompt;
-  }
-
-  it("appends the system prompt file to Pi's system prompt", async () => {
-    writePrompt(SYSTEM_PROMPT_FILE, "You are Aidan.");
-
-    expect(await startAgent("You are a coding assistant.")).toBe(
-      "You are a coding assistant.\n\n<aidan_system>\n\nYou are Aidan.\n\n</aidan_system>",
+  it("registers only the system prompt handler", () => {
+    expect(on).toHaveBeenCalledExactlyOnceWith(
+      "before_agent_start",
+      expect.any(Function),
     );
   });
 
-  it("reads the system prompt file again for every turn", async () => {
-    writePrompt(SYSTEM_PROMPT_FILE, "First.");
-    await startAgent("Base.");
+  it("appends the wrapped system prompt and preserves the host instructions", async () => {
+    vi.mocked(readFile).mockResolvedValue("  You are Aidan.\n");
 
-    writePrompt(SYSTEM_PROMPT_FILE, "Second.");
-
-    expect(await startAgent("Base.")).toContain("Second.");
-  });
-
-  it("leaves the system prompt alone while its file is empty", async () => {
-    expect(await startAgent("Base.")).toBeUndefined();
-  });
-
-  it("puts the writing prompt in front of the newest user message", async () => {
-    writePrompt(BEFORE_USER_PROMPT_FILE, "Reply in lowercase.");
-
-    const result = await run([user("first"), user("second")]);
-
-    expect(result?.messages?.map((message) => message.role)).toEqual([
-      "user",
-      "custom",
-      "user",
-    ]);
-    expect(contents(result)).toEqual([
-      "<aidan_response_guidance>\n\nReply in lowercase.\n\n</aidan_response_guidance>",
-    ]);
-  });
-
-  it("reads the writing prompt again for every request", async () => {
-    writePrompt(BEFORE_USER_PROMPT_FILE, "First rules.");
-    await run([user("hello")]);
-
-    writePrompt(BEFORE_USER_PROMPT_FILE, "Second rules.");
-    const result = await run([user("hello")]);
-
-    expect(contents(result)[0]).toContain("Second rules.");
-    expect(contents(result)[0]).not.toContain("First rules.");
-  });
-
-  it("adds the reminder after a write tool result", async () => {
-    writePrompt(BEFORE_USER_PROMPT_FILE, "Reply in lowercase.");
-    writePrompt(AFTER_WRITE_PROMPT_FILE, "Check the file you wrote.");
-
-    const result = await run([user("hello"), writeResult()]);
-
-    expect(result?.messages?.map((message) => message.role)).toEqual([
-      "custom",
-      "user",
-      "toolResult",
-      "custom",
-    ]);
-    expect(contents(result)[1]).toBe(
-      "<aidan_completion_check>\n\nCheck the file you wrote.\n\n</aidan_completion_check>",
-    );
-  });
-
-  it("assembles bundled prompts without changing the source messages", async () => {
-    handlers = createHandlers(PROMPTS_DIR);
-    const messages = [user("Update the file."), writeResult()];
-    const original = structuredClone(messages);
-
-    const system = await startAgent("Host instructions.");
-    const result = await run(messages);
-
-    expect(system).toMatch(/^Host instructions\.\n\n<aidan_system>\n\n\S/);
-    expect(system).toMatch(/\S\n\n<\/aidan_system>$/);
-    expect(result?.messages?.map((message) => message.role)).toEqual([
-      "user",
-      "toolResult",
-      "custom",
-    ]);
-    expect(contents(result)[0]).toMatch(/^<aidan_completion_check>\n\n\S/);
-    expect(contents(result)[0]).toMatch(/\S\n\n<\/aidan_completion_check>$/);
-    expect(result?.messages?.[2]).toMatchObject({
-      customType: "aidan-reminder",
-      display: false,
+    expect(await startAgent()).toEqual({
+      systemPrompt:
+        "Base instructions.\n\n<EXTREMELY_IMPORTANT>\n\nYou are Aidan.\n\n</EXTREMELY_IMPORTANT>",
     });
-    expect(messages).toEqual(original);
-    expect(warnings).toEqual([]);
+    expect(readFile).toHaveBeenCalledExactlyOnceWith(
+      new URL("../prompts/system.md", import.meta.url),
+      "utf8",
+    );
   });
 
-  it("keeps response guidance but omits the reminder after a failed write", async () => {
-    writePrompt(BEFORE_USER_PROMPT_FILE, "Keep the reply concise.");
-    writePrompt(AFTER_WRITE_PROMPT_FILE, "Check the file you wrote.");
-    const failedWrite = { ...writeResult(), isError: true } as AgentMessage;
+  it("reloads the system prompt for each turn", async () => {
+    vi.mocked(readFile)
+      .mockResolvedValueOnce("First.")
+      .mockResolvedValueOnce("Second.");
 
-    const result = await run([user("hello"), failedWrite]);
-
-    expect(result?.messages?.map((message) => message.role)).toEqual([
-      "custom",
-      "user",
-      "toolResult",
-    ]);
-    expect(contents(result)).toHaveLength(1);
-    expect(result?.messages?.[0]).toMatchObject({
-      customType: "aidan-before-user",
-    });
+    expect((await startAgent())?.systemPrompt).toContain("First.");
+    expect((await startAgent())?.systemPrompt).toContain("Second.");
   });
 
-  it("leaves the reminder out when nothing was written", async () => {
-    writePrompt(AFTER_WRITE_PROMPT_FILE, "Check the file you wrote.");
+  it("leaves the host prompt unchanged when the file is empty", async () => {
+    vi.mocked(readFile).mockResolvedValue(" \n");
 
-    expect(await run([user("hello")])).toBeUndefined();
-  });
-
-  it("injects nothing while the prompt files are empty", async () => {
-    expect(await run([user("hello"), writeResult()])).toBeUndefined();
-    expect(warnings).toEqual([]);
-  });
-
-  it("warns once about a prompt file it cannot read", async () => {
-    rmSync(path.join(promptsDir, BEFORE_USER_PROMPT_FILE));
-
-    await run([user("hello")]);
-    await run([user("hello")]);
-
-    expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toContain(BEFORE_USER_PROMPT_FILE);
+    expect(await startAgent()).toBeUndefined();
   });
 });

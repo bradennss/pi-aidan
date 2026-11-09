@@ -1,11 +1,16 @@
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { createHandlers } from "./src/inject";
-
-export const PROMPTS_DIR = path.join(import.meta.dirname, "prompts");
 
 export default function aidan(pi: ExtensionAPI): void {
-  const handlers = createHandlers(PROMPTS_DIR);
-  pi.on("before_agent_start", handlers.beforeAgentStart);
-  pi.on("context", handlers.context);
+  pi.on("before_agent_start", async (event) => {
+    const prompt = (
+      await readFile(new URL("./prompts/system.md", import.meta.url), "utf8")
+    ).trim();
+
+    if (!prompt) return;
+
+    return {
+      systemPrompt: `${event.systemPrompt}\n\n<EXTREMELY_IMPORTANT>\n\n${prompt}\n\n</EXTREMELY_IMPORTANT>`,
+    };
+  });
 }

@@ -13,7 +13,6 @@
   },
   "files": [
     "index.ts",
-    "src",
     "prompts",
     "skills",
     "!skills/**/node_modules/**"
