@@ -44,7 +44,7 @@ describe("aidan", () => {
 
     expect(await startAgent()).toEqual({
       systemPrompt:
-        "Base instructions.\n\n<EXTREMELY_IMPORTANT>\n\nYou are Aidan.\n\n</EXTREMELY_IMPORTANT>",
+        "Base instructions.\n\n<EXTREMELY_IMPORTANT>\nYou are Aidan.\n\n</EXTREMELY_IMPORTANT>",
     });
     expect(readFile).toHaveBeenCalledExactlyOnceWith(
       new URL("../prompts/system.md", import.meta.url),

@@ -10,7 +10,7 @@ export default function aidan(pi: ExtensionAPI): void {
     if (!prompt) return;
 
     return {
-      systemPrompt: `${event.systemPrompt}\n\n<EXTREMELY_IMPORTANT>\n\n${prompt}\n\n</EXTREMELY_IMPORTANT>`,
+      systemPrompt: `${event.systemPrompt}\n\n<EXTREMELY_IMPORTANT>\n${prompt}\n\n</EXTREMELY_IMPORTANT>`,
     };
   });
 }
