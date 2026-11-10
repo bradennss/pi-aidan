@@ -22,4 +22,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 COPY --from=build /app/target/release/notes-api /usr/local/bin/notes-api
 USER app
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD ["curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:3000/readyz"]
 ENTRYPOINT ["notes-api"]

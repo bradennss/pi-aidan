@@ -97,10 +97,15 @@ fn app(pool: PgPool, token: &str) -> Router {
         .route("/notes", axum::routing::post(create_note))
         .route("/notes/{id}", get(get_note))
         .route_layer(auth)
-        .route("/up", get(ready))
+        .route("/healthz", get(health))
+        .route("/readyz", get(ready))
         .layer(DefaultBodyLimit::max(16 * 1024))
         .layer(TraceLayer::new_for_http())
         .with_state(pool)
+}
+
+async fn health() -> StatusCode {
+    StatusCode::OK
 }
 
 async fn ready(State(pool): State<PgPool>) -> StatusCode {
@@ -185,6 +190,32 @@ mod tests {
         assert_eq!(config.api_token, "test-token");
         assert_eq!(config.rust_log.as_deref(), Some("debug"));
         assert!(envy::from_iter::<_, Config>([("API_TOKEN".into(), "test-token".into())]).is_err());
+    }
+
+    #[sqlx::test]
+    async fn probes_reflect_database_availability(pool: PgPool) {
+        let app = app(pool.clone(), "test-token");
+        for path in ["/healthz", "/readyz"] {
+            let response = app
+                .clone()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        pool.close().await;
+        for (path, status) in [
+            ("/healthz", StatusCode::OK),
+            ("/readyz", StatusCode::SERVICE_UNAVAILABLE),
+        ] {
+            let response = app
+                .clone()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), status);
+        }
     }
 
     #[sqlx::test]

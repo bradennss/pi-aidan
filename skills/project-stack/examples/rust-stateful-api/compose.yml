@@ -12,7 +12,15 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:3000/up"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "--show-error",
+          "http://127.0.0.1:3000/readyz",
+        ]
       interval: 2s
       timeout: 3s
       retries: 30
