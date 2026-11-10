@@ -1,0 +1,2 @@
+FROM postgres:17.11-trixie
+COPY --chmod=755 config/init-db.sh /docker-entrypoint-initdb.d/init-db.sh

@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and choose values from your accounts.
+ovh_subsidiary     = "US"
+vps_plan           = "vps-le-2-2-40"
+vps_datacenter     = "US-EAST-VA"
+cloudflare_zone_id = ""
+app_host           = "api.example.com"

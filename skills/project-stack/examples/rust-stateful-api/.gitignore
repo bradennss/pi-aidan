@@ -1,0 +1,12 @@
+/target/
+/.env
+/.secrets.env
+/mise.local.toml
+/infra/.terraform/
+/infra/*.tfplan
+/infra/terraform.tfstate.backup
+/infra/*.tfvars
+!/infra/*.tfvars.example
+/infra/crash.log
+/ansible/vars.yml
+*.agekey

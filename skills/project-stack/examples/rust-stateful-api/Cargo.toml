@@ -1,0 +1,31 @@
+[package]
+name = "notes-api"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+[dependencies]
+axum = "=0.8.9"
+dotenvy = "=0.15.7"
+envy = "=0.4.2"
+serde = { version = "=1.0.229", features = ["derive"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "macros", "migrate"] }
+tokio = { version = "=1.54.1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+tower-http = { version = "=0.6.11", features = ["validate-request", "trace"] }
+subtle = "=2.6.1"
+tracing = "=0.1.44"
+tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "deny"
+pedantic = "deny"
+
+[profile.release]
+strip = true

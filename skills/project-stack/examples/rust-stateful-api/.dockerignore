@@ -1,0 +1,10 @@
+*
+!config/
+!config/init-db.sh
+!Dockerfile.db
+!Cargo.toml
+!Cargo.lock
+!src/
+!src/**
+!migrations/
+!migrations/**

@@ -1,0 +1,9 @@
+# Managed by Ansible. --noflush preserves Docker and UFW chains.
+*filter
+:CF-WEB - [0:0]
+-F CF-WEB
+{% for network in networks %}
+-A CF-WEB -s {{ network }} -j RETURN
+{% endfor %}
+-A CF-WEB -j DROP
+COMMIT

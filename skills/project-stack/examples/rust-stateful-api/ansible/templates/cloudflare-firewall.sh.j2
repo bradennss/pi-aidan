@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+for family in 4 6; do
+  if [ "$family" = 4 ]; then
+    firewall=iptables
+    restore=iptables-restore
+  else
+    firewall=ip6tables
+    restore=ip6tables-restore
+  fi
+
+  # Replace only our chain atomically. Don't flush Docker's existing rules.
+  "$restore" --wait 5 --noflush < "/etc/cloudflare-firewall/v$family.rules"
+  if ! "$firewall" -w 5 -nL DOCKER-USER >/dev/null 2>&1; then
+    "$firewall" -w 5 -N DOCKER-USER
+  fi
+  for interface in {{ public_interfaces | map('quote') | join(' ') }}; do
+    "$firewall" -w 5 -C INPUT -i "$interface" -p tcp -m multiport --dports 80,443 -j CF-WEB 2>/dev/null ||
+      "$firewall" -w 5 -I INPUT 1 -i "$interface" -p tcp -m multiport --dports 80,443 -j CF-WEB
+    for port in 80 443; do
+      # Match the original port: DOCKER-USER sees packets after Docker's DNAT.
+      # Only ORIGINAL-direction ingress is filtered, not replies to outbound requests.
+      "$firewall" -w 5 -C DOCKER-USER -i "$interface" -p tcp -m conntrack --ctdir ORIGINAL --ctorigdstport "$port" -j CF-WEB 2>/dev/null ||
+        "$firewall" -w 5 -I DOCKER-USER 1 -i "$interface" -p tcp -m conntrack --ctdir ORIGINAL --ctorigdstport "$port" -j CF-WEB
+    done
+  done
+done
