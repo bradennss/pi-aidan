@@ -1,3 +1,0 @@
-# Copy to vars.yml. Include both operator and CI public keys, newline-separated.
-deploy_keys: |
-  ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY

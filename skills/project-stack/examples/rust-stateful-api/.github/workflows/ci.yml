@@ -1,8 +1,8 @@
 name: CI
 on:
-  workflow_call:
+  workflow_dispatch:
   push:
-    branches-ignore: [main]
+    branches: ["**"]
   pull_request:
 permissions:
   contents: read

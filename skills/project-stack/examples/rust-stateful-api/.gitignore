@@ -8,5 +8,4 @@
 /infra/*.tfvars
 !/infra/*.tfvars.example
 /infra/crash.log
-/ansible/vars.yml
 *.agekey

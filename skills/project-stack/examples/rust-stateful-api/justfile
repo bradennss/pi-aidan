@@ -1,7 +1,7 @@
 set dotenv-load
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-with_production_secrets := "sops exec-env secrets/production.enc.env"
+with_deployment_secrets := "sops exec-env secrets/deployment.enc.env"
 
 default:
     @just --list
@@ -15,17 +15,19 @@ down:
 format:
     cargo fmt
     tofu -chdir=infra fmt -recursive
-    prettier --write "**/*.{md,yml,json}"
+    prettier --write "**/*.{md,yml,json,mjs}"
 
 check:
     cargo fmt --check
     cargo clippy --locked --all-targets -- -D warnings
     cargo test --locked
-    prettier --check "**/*.{md,yml,json}"
+    prettier --check "**/*.{md,yml,json,mjs}"
     tofu -chdir=infra fmt -check -recursive
-    tofu -chdir=infra init -backend=false -input=false
+    tofu -chdir=infra init -backend=false -input=false -lockfile=readonly
     tofu -chdir=infra validate
     ansible-playbook -i localhost, ansible/playbook.yml --syntax-check
+    actionlint .github/workflows/*.yml
+    shellcheck scripts/*.sh
     docker compose config --quiet
 
 ansible-deps:
@@ -34,25 +36,8 @@ ansible-deps:
 ci-local:
     act push -W .github/workflows/ci.yml -j check --container-architecture linux/amd64
 
-infra-init:
-    {{with_production_secrets}} 'tofu -chdir=infra init'
+infra:
+    {{with_deployment_secrets}} 'bash scripts/infra.sh'
 
-infra-plan:
-    {{with_production_secrets}} 'tofu -chdir=infra plan -out=change.tfplan'
-
-# Serialize applies: pull current repo state first, commit encrypted state after.
-infra-apply:
-    {{with_production_secrets}} 'tofu -chdir=infra apply change.tfplan'
-
-# Pass the Debian image/bootstrap user on first run; use deploy on later runs.
-# Rerun to refresh the Cloudflare IP allowlist from its official feeds.
-configure user:
-    {{with_production_secrets}} 'vps_ip="$(tofu -chdir=infra output -raw vps_ip)" && test -n "$vps_ip" && ansible-playbook -i "$vps_ip," -u {{user}} ansible/playbook.yml -e @ansible/vars.yml'
-
-# First provision/harden the host and point DNS at it; then bootstrap Kamal.
-setup:
-    {{with_production_secrets}} 'tofu -chdir=infra init -input=false && kamal setup --version "$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")"'
-
-# Set RELEASE_VERSION and pass --skip-push to deploy an existing image.
-deploy *options:
-    {{with_production_secrets}} 'tofu -chdir=infra init -input=false && kamal deploy {{options}} --version "${RELEASE_VERSION:-$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")}"'
+deploy:
+    {{with_deployment_secrets}} 'bash scripts/deploy.sh'

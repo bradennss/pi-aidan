@@ -1,15 +1,17 @@
 <%
 require "json"
 require "open3"
+environment = ENV.fetch("DEPLOY_ENV")
+raise "Invalid deployment environment" unless %w[staging production].include?(environment)
 output_json, status = Open3.capture2("tofu", "-chdir=infra", "output", "-json")
 raise "Could not read deployment outputs from OpenTofu state" unless status.success?
 outputs = JSON.parse(output_json)
 vps_ip = outputs.fetch("vps_ip").fetch("value").strip
-app_host = outputs.fetch("app_host").fetch("value").strip
-raise "Deployment hosts must not be empty" if vps_ip.empty? || app_host.empty?
+runtime = outputs.fetch("runtime").fetch("value").fetch(environment)
+raise "Deployment hosts must not be empty" if vps_ip.empty? || runtime.fetch("host").empty?
 %>
-service: notes-api
-image: <%= ENV.fetch("REGISTRY_NAMESPACE", ENV.fetch("REGISTRY_USER")).downcase %>/notes-api
+service: notes-api-<%= environment %>
+image: <%= ENV.fetch("REGISTRY_NAMESPACE").downcase %>/notes-api
 servers:
   web:
     hosts:
@@ -23,9 +25,7 @@ ssh:
   user: deploy
   forward_agent: false
 proxy:
-  host: <%= app_host %>
-  # HTTP-01 works through Cloudflare on port 80; do not block, cache or redirect
-  # /.well-known/acme-challenge/ in Cloudflare Access, WAF, Workers or rules.
+  host: <%= runtime.fetch("host") %>
   ssl: true
   app_port: 3000
   healthcheck:
@@ -46,6 +46,7 @@ env:
     - API_TOKEN
 accessories:
   db:
+    service: notes-api-<%= environment %>-db
     image: postgres:17.11-trixie
     host: <%= vps_ip %>
     env:
@@ -57,6 +58,6 @@ accessories:
     files:
       - config/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     directories:
-      - data:/var/lib/postgresql/data
+      - /var/lib/notes-api/<%= environment %>/postgres:/var/lib/postgresql/data
     options:
       memory: 1g

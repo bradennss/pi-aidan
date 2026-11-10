@@ -1,0 +1,21 @@
+name: Deploy staging
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag to deploy or retry
+        required: true
+        type: string
+permissions:
+  actions: write
+  contents: write
+  packages: read
+jobs:
+  deploy:
+    uses: ./.github/workflows/deployment.yml
+    with:
+      environment: staging
+      tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    secrets: inherit

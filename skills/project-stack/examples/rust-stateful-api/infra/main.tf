@@ -14,7 +14,6 @@ terraform {
       version = "5.8.2"
     }
   }
-  # Commit only encrypted state; keep the passphrase recoverable outside Git.
   backend "local" {
     path = "terraform.tfstate"
   }
@@ -41,21 +40,16 @@ provider "ovh" {
 }
 provider "cloudflare" {}
 
+import {
+  to = ovh_vps.api
+  id = var.vps_service_name
+}
+
 resource "ovh_vps" "api" {
   display_name   = "notes-api"
-  ovh_subsidiary = var.ovh_subsidiary
-  plan = [{
-    duration     = "P1M"
-    plan_code    = var.vps_plan
-    pricing_mode = "default"
-    configuration = [
-      { label = "vps_datacenter", value = var.vps_datacenter },
-      { label = "vps_os", value = "Debian 13" }
-    ]
-  }]
-  # OVH cannot discover the image UUID until the service exists. Install the
-  # initial SSH key via the OVH panel, then let Ansible manage deploy keys.
-  # Ordering requires an OVH payment method; apply incurs real charges.
+  image_id       = var.vps_image_id
+  public_ssh_key = var.vps_public_key
+  plan           = []
   lifecycle {
     prevent_destroy = true
   }
@@ -67,31 +61,33 @@ data "ovh_vps" "api" {
 
 locals {
   ipv4 = one([for ip in data.ovh_vps.api.ips : ip if can(cidrnetmask("${ip}/32"))])
+  environments = {
+    staging    = var.staging_host
+    production = var.production_host
+  }
+  credentials = setproduct(keys(local.environments), ["postgres", "app", "api_token"])
 }
 
-# Generated once and retained in encrypted state, not regenerated per deployment.
-# Replacing a DB password also requires updating the live PostgreSQL role.
 resource "random_password" "runtime" {
-  for_each = toset(["postgres", "app", "api_token"])
+  for_each = { for pair in local.credentials : "${pair[0]}_${pair[1]}" => pair }
   length   = 64
   special  = false
 }
 
 resource "cloudflare_dns_record" "api" {
-  zone_id = var.cloudflare_zone_id
-  name    = var.app_host
-  type    = "A"
-  content = local.ipv4
-  ttl     = 1
-  # The origin only accepts web traffic from Cloudflare.
-  proxied = true
+  for_each = local.environments
+  zone_id  = var.cloudflare_zone_id
+  name     = each.value
+  type     = "A"
+  content  = local.ipv4
+  ttl      = 1
+  proxied  = true
 }
 
 resource "cloudflare_zone_setting" "security" {
   for_each = {
-    ssl             = "strict"
-    min_tls_version = "1.2"
-    # Kamal redirects HTTP except ACME challenges; an edge redirect can break issuance.
+    ssl              = "strict"
+    min_tls_version  = "1.2"
     always_use_https = "off"
   }
   zone_id    = var.cloudflare_zone_id
@@ -99,29 +95,17 @@ resource "cloudflare_zone_setting" "security" {
   value      = each.value
 }
 
-output "app_host" {
-  value = var.app_host
-}
-
-# Alphanumeric passwords need no URL escaping and satisfy API token validation.
-output "postgres_password" {
-  value     = random_password.runtime["postgres"].result
+output "runtime" {
   sensitive = true
-}
-
-output "app_db_password" {
-  value     = random_password.runtime["app"].result
-  sensitive = true
-}
-
-output "api_token" {
-  value     = random_password.runtime["api_token"].result
-  sensitive = true
-}
-
-output "database_url" {
-  value     = "postgres://notes:${random_password.runtime["app"].result}@notes-api-db:5432/notes"
-  sensitive = true
+  value = {
+    for environment, host in local.environments : environment => {
+      host              = host
+      postgres_password = random_password.runtime["${environment}_postgres"].result
+      app_db_password   = random_password.runtime["${environment}_app"].result
+      api_token         = random_password.runtime["${environment}_api_token"].result
+      database_url      = "postgres://notes:${random_password.runtime["${environment}_app"].result}@notes-api-${environment}-db:5432/notes"
+    }
+  }
 }
 
 output "vps_ip" {

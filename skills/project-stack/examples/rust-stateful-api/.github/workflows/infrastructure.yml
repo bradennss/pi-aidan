@@ -1,0 +1,25 @@
+name: Reconcile infrastructure
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/**
+      - ansible/**
+      - scripts/infra.sh
+      - secrets/deployment.enc.env
+      - mise.toml
+      - justfile
+      - .github/workflows/infrastructure.yml
+      - .github/workflows/deployment.yml
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+  packages: read
+jobs:
+  reconcile:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deployment.yml
+    with:
+      environment: infrastructure
+    secrets: inherit

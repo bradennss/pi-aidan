@@ -80,6 +80,15 @@
         append: true
         create_home: true
 
+    - name: Create separate PostgreSQL data parents
+      ansible.builtin.file:
+        path: "/var/lib/notes-api/{{ item }}"
+        state: directory
+        owner: deploy
+        group: deploy
+        mode: "0750"
+      loop: [staging, production]
+
     - name: Install deployment keys
       ansible.posix.authorized_key:
         user: deploy
