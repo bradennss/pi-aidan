@@ -1,8 +1,6 @@
 name: Release
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
     branches: [main]
   workflow_dispatch:
 permissions:
@@ -10,57 +8,42 @@ permissions:
 concurrency:
   group: release
   cancel-in-progress: false
-env:
-  RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
 jobs:
-  prepare:
-    if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' &&
-       github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_repository.full_name == github.repository &&
-       (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+  release-please:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write
+      issues: write
+      pull-requests: write
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      publish: ${{ steps.version.outputs.publish }}
-    defaults:
-      run:
-        shell: bash
+      release_created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          ref: ${{ env.RELEASE_COMMIT }}
-          fetch-depth: 0
-      - uses: jdx/mise-action@v5
-        with:
-          version: 2026.11.0
-          install_args: rust jq
-      - name: Resolve the release version
-        id: version
-        run: |
-          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
-          if git show-ref --verify --quiet "refs/tags/v$version"; then
-            printf 'publish=false\n' >> "$GITHUB_OUTPUT"
-          else
-            printf 'publish=true\n' >> "$GITHUB_OUTPUT"
-          fi
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
   release:
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
-      contents: write
+      contents: read
       actions: write
       packages: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REGISTRY_NAMESPACE: ${{ github.repository_owner }}
-      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_VERSION: ${{ needs.release-please.outputs.version }}
+      RELEASE_COMMIT: ${{ needs.release-please.outputs.sha }}
+      RELEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
     defaults:
       run:
         shell: bash
@@ -95,13 +78,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish image and release tag
+      - name: Publish the release image
         run: |
           docker tag notes-api:local "$RELEASE_IMAGE:$RELEASE_VERSION"
           docker push "$RELEASE_IMAGE:$RELEASE_VERSION"
-          gh release create "v$RELEASE_VERSION" --target "$RELEASE_COMMIT" --title "v$RELEASE_VERSION" --notes ""
-      - name: Start staging for the token-created tag
-        run: gh workflow run staging.yml --ref main -f "tag=v$RELEASE_VERSION"
+      - name: Deploy the published release to staging
+        run: gh workflow run staging.yml --ref main -f "tag=$RELEASE_TAG"
       - name: Clean up
         if: always()
         run: docker compose down -v

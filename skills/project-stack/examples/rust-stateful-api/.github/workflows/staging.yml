@@ -1,7 +1,5 @@
 name: Deploy staging
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -17,5 +15,5 @@ jobs:
     uses: ./.github/workflows/deployment.yml
     with:
       environment: staging
-      tag: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+      tag: ${{ inputs.tag }}
     secrets: inherit
