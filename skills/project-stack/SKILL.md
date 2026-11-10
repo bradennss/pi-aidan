@@ -5,33 +5,40 @@ description: Choose tools, libraries, and project configuration when starting a 
 
 # Project stack
 
-Use these defaults to fill gaps, not to replace a working setup. Before choosing tools, read the project's instructions, manifests, lockfiles, and deployment configuration. Keep its established conventions unless the user asks to change them.
+Read project instructions, manifests, lockfiles, and deployment configuration first. Use these defaults to fill gaps; preserve established conventions unless asked to change them.
 
-When an example fits the task, start with its task file to understand how the pieces work together. Then read the configuration and source files relevant to the change, and adapt them to the project. Check the official documentation for the versions you choose, since an example's pins may no longer be current.
+For relevant examples, read the task file first, then adapt the configuration and source needed. Check official documentation for chosen versions; example pins may be outdated.
 
-Add only what the project needs, run its checks, and exercise the behavior you changed. Ask for permission before provisioning paid infrastructure or deploying.
+Add only what's needed, run project checks, and exercise changed behavior. Ask permission before provisioning paid infrastructure or deploying.
 
 ## Development defaults
 
-- Use pnpm for TypeScript packages and commit its lockfile.
-- Pin development tools in `mise.toml` with mise. Expose common tasks through a `justfile` so local development and CI use the same commands.
-- Use the language's own formatter where available. Format Markdown with Prettier and set `proseWrap: "never"` so the formatter does not reflow paragraphs.
-- Enable strict or pedantic lint rules and make warnings fail checks. Keep exceptions narrow and explain why they are needed.
-- Use SemVer for applications and packages. Keep release tags and artifact versions aligned.
-- Use Docker Compose to run applications and their dependencies locally.
-- Run checks and release workflows with GitHub Actions. Use act to exercise workflows locally, while checking behavior that depends on hosted runners in GitHub Actions itself.
+- TypeScript packages: pnpm with a committed lockfile.
+- Tool versions: mise with pins in `mise.toml`.
+- Local and CI tasks: shared commands in a `justfile`.
+- Formatting: language-native formatters; Prettier for Markdown with `proseWrap: "never"`.
+- Linting: strict or pedantic rules with warnings as failures.
+- Versioning: SemVer for applications and packages.
+- Local applications and dependencies: Docker Compose.
+- CI and releases: GitHub Actions, with act for local workflow testing.
+
+Keep lint exceptions narrow and explain them. Align release tags and artifact versions. Verify hosted-runner-specific behavior in GitHub Actions.
 
 ## Runtime and deployment defaults
 
-Use PostgreSQL for persistent data. Add NATS and JetStream only when the project needs messaging or queues. For queued work, use durable JetStream consumers.
+- Persistent data: PostgreSQL.
+- Messaging or queues, only when needed: NATS and JetStream, with durable consumers for queued work.
+- Infrastructure: OpenTofu.
+- Host configuration: Ansible before application deployment.
+- Deployment: Kamal to a hardened VPS.
+- External deployment credentials: SOPS with age.
+- Local configuration: an ignored `.env`.
 
-Manage infrastructure with OpenTofu and configure hosts with Ansible before deploying applications to a hardened VPS with Kamal. Commit encrypted OpenTofu state to the repository and keep its encryption key recoverable outside Git. Serialize applies and commit the updated state even if an apply only partly succeeds.
-
-Generate service credentials once and retain them in encrypted OpenTofu state rather than generating new values on each deployment. Use SOPS with age for external deployment credentials and an ignored `.env` for local configuration. Commit only safe configuration examples and encrypted secrets.
+Commit encrypted OpenTofu state and keep its key recoverable outside Git. Serialize applies and commit updated state even after partial failure. Generate service credentials once and retain them in encrypted state across deployments. Commit only safe configuration examples and encrypted secrets.
 
 ## Example catalog
 
-Each example is a self-contained project. Use it as a starting point and leave out anything the target project does not need.
+Examples are self-contained starting points. Omit anything the target project doesn't need.
 
 | Example | Use when | Start here |
 | --- | --- | --- |
