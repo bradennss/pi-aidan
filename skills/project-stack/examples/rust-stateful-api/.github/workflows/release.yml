@@ -1,14 +1,56 @@
 name: Release
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: release
   cancel-in-progress: false
+env:
+  RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
 jobs:
+  prepare:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+          fetch-depth: 0
+      - uses: jdx/mise-action@v5
+        with:
+          version: 2026.11.0
+          install_args: rust jq
+      - name: Resolve the release version
+        id: version
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          if git show-ref --verify --quiet "refs/tags/v$version"; then
+            printf 'publish=false\n' >> "$GITHUB_OUTPUT"
+          else
+            printf 'publish=true\n' >> "$GITHUB_OUTPUT"
+          fi
   release:
-    if: github.ref == 'refs/heads/main'
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -18,31 +60,18 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Require successful main CI for this commit
-        run: |
-          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&branch=main" \
-            --jq '.workflow_runs[0] | .status == "completed" and .conclusion == "success"' | grep -qx true
-      - uses: jdx/mise-action@v5
-        with:
-          version: 2026.11.0
-          install_args: rust jq
-      - name: Resolve the release version
-        run: |
-          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          if git show-ref --verify --quiet "refs/tags/v$version"; then
-            exit 1
-          fi
-          printf 'RELEASE_VERSION=%s\nRELEASE_IMAGE=ghcr.io/%s/notes-api\n' "$version" "${REGISTRY_NAMESPACE,,}" >> "$GITHUB_ENV"
+          ref: ${{ env.RELEASE_COMMIT }}
       - uses: docker/setup-buildx-action@v3
-      - run: |
+      - name: Prepare image name and local configuration
+        run: |
+          printf 'RELEASE_IMAGE=ghcr.io/%s/notes-api\n' "${REGISTRY_NAMESPACE,,}" >> "$GITHUB_ENV"
           cp .env.example .env
           docker compose up -d --wait db
       - name: Build the release image once
@@ -55,7 +84,7 @@ jobs:
           cache-from: type=gha,version=2,scope=notes-api-amd64
           cache-to: type=gha,version=2,scope=notes-api-amd64,mode=max
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
       - name: Smoke-test the image
         run: |
           docker compose up --no-build -d --wait
@@ -70,7 +99,7 @@ jobs:
         run: |
           docker tag notes-api:local "$RELEASE_IMAGE:$RELEASE_VERSION"
           docker push "$RELEASE_IMAGE:$RELEASE_VERSION"
-          gh release create "v$RELEASE_VERSION" --target "$GITHUB_SHA" --title "v$RELEASE_VERSION" --notes ""
+          gh release create "v$RELEASE_VERSION" --target "$RELEASE_COMMIT" --title "v$RELEASE_VERSION" --notes ""
       - name: Start staging for the token-created tag
         run: gh workflow run staging.yml --ref main -f "tag=v$RELEASE_VERSION"
       - name: Clean up
