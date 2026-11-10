@@ -1,9 +1,19 @@
-FROM rust:1.99.1-trixie AS build
+FROM rust:1.99.1-trixie AS chef
+RUN cargo install cargo-chef --version 0.1.77 --locked
 WORKDIR /app
+
+FROM chef AS planner
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS build
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --locked --release --recipe-path recipe.json
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY migrations ./migrations
-RUN cargo build --locked --release
+RUN cargo build --locked --release --bin notes-api
 
 FROM debian:13-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \

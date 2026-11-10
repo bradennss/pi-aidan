@@ -1,5 +1,6 @@
 services:
   app:
+    image: notes-api:local
     build: .
     ports:
       - "127.0.0.1:3000:3000"

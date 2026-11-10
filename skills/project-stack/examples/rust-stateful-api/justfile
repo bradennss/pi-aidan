@@ -53,5 +53,6 @@ configure user:
 setup:
     {{with_production_secrets}} 'tofu -chdir=infra init -input=false && kamal setup --version "$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")"'
 
-deploy:
-    {{with_production_secrets}} 'tofu -chdir=infra init -input=false && kamal deploy --version "$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")"'
+# Set RELEASE_VERSION and pass --skip-push to deploy an existing image.
+deploy *options:
+    {{with_production_secrets}} 'tofu -chdir=infra init -input=false && kamal deploy {{options}} --version "${RELEASE_VERSION:-$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[0].version")}"'
