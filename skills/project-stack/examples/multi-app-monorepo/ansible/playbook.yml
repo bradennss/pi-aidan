@@ -1,0 +1,280 @@
+- name: Harden a Debian 13 VPS for Kamal
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    deployment_user: "deploy-{{ deployment_environment }}"
+  pre_tasks:
+    - name: Wait for the VPS to accept SSH connections
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 5
+        sleep: 10
+        timeout: 600
+
+    - name: Gather host facts
+      ansible.builtin.setup:
+
+  tasks:
+    - name: Require Debian 13 and deployment keys
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Debian'
+          - ansible_facts['distribution_major_version'] == '13'
+          - deployment_environment in ['staging', 'production']
+          - deploy_keys | length > 40
+
+    - name: Apply OS updates
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+        cache_valid_time: 3600
+
+    - name: Install host packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - ufw
+          - iptables
+          - fail2ban
+          - unattended-upgrades
+        state: present
+
+    - name: Create apt key directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Install Docker repository key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/debian/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Configure Docker apt repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/docker.sources
+        mode: "0644"
+        content: |
+          Types: deb
+          URIs: https://download.docker.com/linux/debian
+          Suites: trixie
+          Components: stable
+          Architectures: amd64
+          Signed-By: /etc/apt/keyrings/docker.asc
+
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          [
+            docker-ce,
+            docker-ce-cli,
+            containerd.io,
+            docker-buildx-plugin,
+            docker-compose-plugin,
+          ]
+        state: present
+
+    - name: Configure bounded Docker logs
+      ansible.builtin.copy:
+        dest: /etc/docker/daemon.json
+        mode: "0644"
+        content: |
+          {"log-driver":"local","log-opts":{"max-size":"10m","max-file":"3"},"live-restore":true}
+      notify: Restart Docker
+
+    - name: Create the deployment user
+      ansible.builtin.user:
+        name: "{{ deployment_user }}"
+        shell: /bin/bash
+        groups: docker
+        append: true
+        create_home: true
+
+    - name: Create the shared PostgreSQL data parent
+      ansible.builtin.file:
+        path: /var/lib/notes-api
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create this environment's PostgreSQL data parent
+      ansible.builtin.file:
+        path: "/var/lib/notes-api/{{ deployment_environment }}"
+        state: directory
+        owner: "{{ deployment_user }}"
+        group: "{{ deployment_user }}"
+        mode: "0750"
+
+    - name: Install deployment keys
+      ansible.posix.authorized_key:
+        user: "{{ deployment_user }}"
+        key: "{{ deploy_keys }}"
+        exclusive: true
+
+    - name: Allow this environment's deployment user to maintain the host
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ deployment_user }}"
+        mode: "0440"
+        content: "{{ deployment_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Allow key-only SSH from any source
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+
+    # Refresh on each configure run; never replace a working allowlist with an empty feed.
+    - name: Fetch Cloudflare's official IPv4 and IPv6 ranges
+      ansible.builtin.uri:
+        url: "https://www.cloudflare.com/ips-v{{ item }}"
+        return_content: true
+      loop: [4, 6]
+      register: cloudflare_ranges
+
+    - name: Require nonempty Cloudflare feeds and a public interface
+      ansible.builtin.assert:
+        that:
+          - cloudflare_ranges.results[0].content.split() | length > 0
+          - cloudflare_ranges.results[1].content.split() | length > 0
+          - ansible_facts['default_ipv4']['interface'] | length > 0
+
+    - name: Collect Cloudflare networks and public interfaces
+      ansible.builtin.set_fact:
+        cloudflare_networks:
+          - "{{ cloudflare_ranges.results[0].content.split() }}"
+          - "{{ cloudflare_ranges.results[1].content.split() }}"
+        public_interfaces: >-
+          {{ [ansible_facts['default_ipv4']['interface'],
+              ansible_facts.get('default_ipv6', {}).get('interface', '')]
+             | reject('equalto', '') | unique | list }}
+
+    - name: Remove unrestricted HTTP and HTTPS rules from earlier configuration
+      community.general.ufw:
+        delete: true
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: ["80", "443"]
+
+    - name: Allow Cloudflare HTTP and HTTPS to host services
+      community.general.ufw:
+        rule: allow
+        port: "{{ item.1 }}"
+        proto: tcp
+        from_ip: "{{ item.0 }}"
+      loop: "{{ (cloudflare_networks | flatten) | product(['80', '443']) | list }}"
+
+    - name: Create Cloudflare firewall directory
+      ansible.builtin.file:
+        path: /etc/cloudflare-firewall
+        state: directory
+        mode: "0755"
+
+    - name: Render IPv4 and IPv6 allowlists
+      ansible.builtin.template:
+        src: cloudflare-web.rules.j2
+        dest: "/etc/cloudflare-firewall/v{{ item.family }}.rules"
+        mode: "0644"
+      loop:
+        - family: 4
+          networks: "{{ cloudflare_networks[0] }}"
+        - family: 6
+          networks: "{{ cloudflare_networks[1] }}"
+      vars:
+        networks: "{{ item.networks }}"
+
+    - name: Install Docker-aware Cloudflare firewall
+      ansible.builtin.template:
+        src: cloudflare-firewall.sh.j2
+        dest: /usr/local/sbin/cloudflare-firewall
+        mode: "0755"
+        validate: /bin/bash -n %s
+
+    - name: Create Docker systemd override directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: "0755"
+
+    - name: Restore web restrictions before Docker starts containers
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/docker.service.d/cloudflare-firewall.conf
+        mode: "0644"
+        content: |
+          [Unit]
+          After=ufw.service
+          [Service]
+          ExecStartPre=/usr/local/sbin/cloudflare-firewall
+      notify: Restart Docker
+
+    # UFW alone cannot restrict Docker-published ports. Both chains are required.
+    - name: Apply Cloudflare restrictions to host and Docker traffic
+      ansible.builtin.command: /usr/local/sbin/cloudflare-firewall
+      changed_when: false
+
+    - name: Deny unsolicited host traffic
+      community.general.ufw:
+        direction: incoming
+        default: deny
+        state: enabled
+
+    - name: Enable automatic security updates
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        mode: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: Enable SSH protection
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        mode: "0644"
+        content: |
+          [sshd]
+          enabled = true
+          backend = systemd
+      notify: Restart fail2ban
+
+    - name: Disable password and root SSH login
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/00-hardening.conf
+        mode: "0644"
+        content: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+          X11Forwarding no
+          AllowAgentForwarding no
+          MaxAuthTries 3
+        validate: /usr/sbin/sshd -t -f %s
+      notify: Reload SSH
+
+    - name: Enable services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop: [docker, fail2ban, unattended-upgrades]
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        daemon_reload: true
+        state: restarted
+    - name: Restart fail2ban
+      ansible.builtin.systemd_service:
+        name: fail2ban
+        state: restarted
+    - name: Reload SSH
+      ansible.builtin.systemd_service:
+        name: ssh
+        state: reloaded

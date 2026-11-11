@@ -1,0 +1,53 @@
+set dotenv-load
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+default:
+    @just --list
+
+up:
+    docker compose up --build -d --wait
+
+down:
+    docker compose down
+
+install:
+    pnpm install --frozen-lockfile
+
+build:
+    cargo build --locked --release
+    pnpm run build
+
+format:
+    cargo fmt --all
+    tofu -chdir=infra fmt -recursive
+    pnpm exec prettier --write "**/*.{md,yml,yaml,json,mjs,ts,tsx}"
+
+check:
+    cargo fmt --all --check
+    pnpm run check
+    cargo clippy --locked --all-targets -- -D warnings
+    cargo test --locked
+    pnpm exec prettier --check "**/*.{md,yml,yaml,json,mjs,ts,tsx}"
+    pnpm run build
+    tofu -chdir=infra fmt -check -recursive
+    TF_VAR_environment=staging tofu -chdir=infra init -backend=false -input=false -lockfile=readonly
+    tofu -chdir=infra validate
+    ansible-playbook -i localhost, ansible/playbook.yml --syntax-check
+    actionlint .github/workflows/*.yml
+    shellcheck scripts/*.sh
+    docker compose config --quiet
+
+ansible-deps:
+    ansible-galaxy collection install -r ansible/requirements.yml
+
+ci-local:
+    act push -W .github/workflows/ci.yml -j check --container-architecture linux/amd64
+
+infra:
+    sops exec-env "secrets/$DEPLOY_ENV.enc.env" 'bash scripts/infra.sh'
+
+infra-output:
+    TF_DATA_DIR="$PWD/infra/.terraform/$DEPLOY_ENV" TF_VAR_environment="$DEPLOY_ENV" sops exec-env "secrets/$DEPLOY_ENV.enc.env" 'tofu -chdir=infra output -json'
+
+deploy:
+    sops exec-env "secrets/$DEPLOY_ENV.enc.env" 'bash scripts/deploy.sh'

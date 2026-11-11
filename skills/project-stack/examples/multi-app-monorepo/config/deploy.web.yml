@@ -1,0 +1,36 @@
+service: notes-web-<%= ENV.fetch("DEPLOY_ENV") %>
+image: <%= ENV.fetch("REGISTRY_NAMESPACE").downcase %>/notes-web
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("VPS_IP") %>
+    options:
+      memory: 512m
+      read-only: true
+      tmpfs: /tmp
+      cap-drop: ALL
+      security-opt: no-new-privileges:true
+ssh:
+  user: deploy-<%= ENV.fetch("DEPLOY_ENV") %>
+  forward_agent: false
+proxy:
+  host: <%= ENV.fetch("WEB_HOST") %>
+  ssl: true
+  forward_headers: true
+  app_port: 3000
+  healthcheck:
+    path: /healthz
+registry:
+  server: ghcr.io
+  username: <%= ENV.fetch("REGISTRY_USER") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+builder:
+  arch: amd64
+  context: .
+  dockerfile: apps/web/Dockerfile
+env:
+  clear:
+    API_URL: <%= ENV.fetch("API_URL") %>
+  secret:
+    - API_TOKEN

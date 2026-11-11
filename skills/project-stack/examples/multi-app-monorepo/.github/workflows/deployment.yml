@@ -1,0 +1,78 @@
+name: App deployment
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      ref:
+        default: main
+        type: string
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: shared-vps
+  cancel-in-progress: false
+jobs:
+  select-apps:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      sha: ${{ steps.matrix.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Read app versions
+        id: matrix
+        run: |
+          matrix="$(bash scripts/app-matrix.sh)"
+          jq -e ".include | length > 0" <<< "$matrix" > /dev/null
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          printf 'sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+  deploy:
+    name: Deploy ${{ matrix.app }}
+    needs: select-apps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    strategy:
+      max-parallel: 1
+      matrix: ${{ fromJSON(needs.select-apps.outputs.matrix) }}
+    env:
+      DEPLOY_ENV: ${{ inputs.environment }}
+      DEPLOY_FILE: config/deploy.${{ matrix.app }}.yml
+      DEPLOY_VERSION: ${{ matrix.version }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+      REGISTRY_USER: ${{ github.actor }}
+      REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+      KAMAL_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.select-apps.outputs.sha }}
+      - name: Install Ruby build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential libssl-dev libyaml-dev libreadline-dev zlib1g-dev libffi-dev libgmp-dev
+      - uses: jdx/mise-action@v5
+        with:
+          version: 2026.11.0
+          install_args: just ruby gem:kamal sops age
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          : "${SSH_KNOWN_HOSTS:?Set SSH_KNOWN_HOSTS to the trusted VPS host-key entries}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Deploy the app release
+        run: just deploy

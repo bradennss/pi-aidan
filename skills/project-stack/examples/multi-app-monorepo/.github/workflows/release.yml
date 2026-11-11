@@ -1,0 +1,126 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release-please:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      has-releases: ${{ steps.images.outputs.has-releases }}
+      images: ${{ steps.images.outputs.matrix }}
+      ref: ${{ steps.images.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+      - name: Select released app images
+        id: images
+        env:
+          RELEASE_OUTPUTS: ${{ toJSON(steps.release.outputs) }}
+        run: |
+          release_shas="$(jq -c '[to_entries[] | select(.key | endswith("--sha")) | .value] | unique' <<< "$RELEASE_OUTPUTS")"
+          if [[ "$(jq 'length' <<< "$release_shas")" -gt 0 ]]; then
+            git fetch origin main
+            deploy_ref="$(git rev-list --topo-order FETCH_HEAD | jq -Rrs --argjson shas "$release_shas" '
+              split("\n") | map(select(IN($shas[]))) | first // empty
+            ')"
+            test -n "$deploy_ref"
+            git checkout --detach "$deploy_ref"
+            printf 'ref=%s\n' "$deploy_ref" >> "$GITHUB_OUTPUT"
+          fi
+          apps="$(bash scripts/app-matrix.sh)"
+          matrix="$(jq -c --argjson releases "$RELEASE_OUTPUTS" '
+            .include |= map(
+              (.path + "--") as $prefix |
+              select($releases[$prefix + "release_created"] == "true") |
+              . + {version: $releases[$prefix + "version"], sha: $releases[$prefix + "sha"]}
+            )
+          ' <<< "$apps")"
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          printf 'has-releases=%s\n' "$(jq ".include | length > 0" <<< "$matrix")" >> "$GITHUB_OUTPUT"
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.has-releases == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.release-please.outputs.images) }}
+    env:
+      APP: ${{ matrix.app }}
+      RELEASE_VERSION: ${{ matrix.version }}
+      RELEASE_COMMIT: ${{ matrix.sha }}
+      REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_COMMIT }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Prepare image name and local configuration
+        run: |
+          printf 'REGISTRY_PREFIX=ghcr.io/%s\n' "${REGISTRY_NAMESPACE,,}" >> "$GITHUB_ENV"
+          cp .env.example .env
+      - name: Build the release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.path }}/Dockerfile
+          load: true
+          tags: notes-${{ matrix.app }}:local
+          platforms: linux/amd64
+          cache-from: type=gha,version=2,scope=notes-${{ matrix.app }}-amd64
+          cache-to: type=gha,version=2,scope=notes-${{ matrix.app }}-amd64,mode=max
+          labels: |
+            io.notes.managed=true
+            org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
+            org.opencontainers.image.version=${{ env.RELEASE_VERSION }}
+      - name: Check image health
+        run: docker compose up -d --wait "$APP"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the release image
+        run: |
+          image="$REGISTRY_PREFIX/notes-$APP:$RELEASE_VERSION"
+          docker tag "notes-$APP:local" "$image"
+          docker push "$image"
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
+  staging:
+    needs: [release-please, publish]
+    if: needs.release-please.outputs.has-releases == 'true'
+    permissions:
+      contents: read
+      packages: read
+    uses: ./.github/workflows/deployment.yml
+    with:
+      environment: staging
+      ref: ${{ needs.release-please.outputs.ref }}
+    secrets: inherit

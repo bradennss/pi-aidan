@@ -1,9 +1,0 @@
-target/
-.terraform/
-infra/*.tfstate*
-infra/*.tfplan
-secrets/*.enc.env
-.env
-.secrets.env
-# The ERB preamble must be rendered before this file is valid YAML.
-config/deploy.yml

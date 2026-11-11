@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "packages": {
+    "apps/api": {
+      "release-type": "rust",
+      "component": "api"
+    },
+    "apps/web": {
+      "release-type": "node",
+      "component": "web"
+    },
+    "packages/client": {
+      "release-type": "node",
+      "component": "client"
+    }
+  },
+  "plugins": [
+    {
+      "type": "cargo-workspace",
+      "merge": false
+    },
+    {
+      "type": "node-workspace",
+      "merge": false
+    }
+  ]
+}

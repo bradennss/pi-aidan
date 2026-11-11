@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.next/
+next-env.d.ts
+pnpm-lock.yaml
+target/
+.terraform/
+infra/**/*.tfstate*
+infra/*.tfplan
+secrets/*.enc.env
+.env
+.secrets.env
+config/deploy.api.yml
+config/deploy.web.yml

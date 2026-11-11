@@ -1,0 +1,19 @@
+name: Deploy staging
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref containing the app versions to deploy
+        default: main
+        type: string
+permissions:
+  contents: read
+  packages: read
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deployment.yml
+    with:
+      environment: staging
+      ref: ${{ inputs.ref }}
+    secrets: inherit

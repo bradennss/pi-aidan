@@ -1,0 +1,52 @@
+service: notes-api-<%= ENV.fetch("DEPLOY_ENV") %>
+image: <%= ENV.fetch("REGISTRY_NAMESPACE").downcase %>/notes-api
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("VPS_IP") %>
+    options:
+      memory: 512m
+      read-only: true
+      cap-drop: ALL
+      security-opt: no-new-privileges:true
+ssh:
+  user: deploy-<%= ENV.fetch("DEPLOY_ENV") %>
+  forward_agent: false
+proxy:
+  host: <%= ENV.fetch("API_HOST") %>
+  ssl: true
+  app_port: 3000
+  healthcheck:
+    path: /readyz
+registry:
+  server: ghcr.io
+  username: <%= ENV.fetch("REGISTRY_USER") %>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+builder:
+  arch: amd64
+  context: .
+  dockerfile: apps/api/Dockerfile
+env:
+  clear:
+    RUST_LOG: info
+  secret:
+    - DATABASE_URL
+    - API_TOKEN
+accessories:
+  db:
+    service: notes-api-<%= ENV.fetch("DEPLOY_ENV") %>-db
+    image: postgres:17.11-trixie
+    host: <%= ENV.fetch("VPS_IP") %>
+    env:
+      clear:
+        POSTGRES_USER: postgres
+      secret:
+        - POSTGRES_PASSWORD
+        - APP_DB_PASSWORD
+    files:
+      - config/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    directories:
+      - /var/lib/notes-api/<%= ENV.fetch("DEPLOY_ENV") %>/postgres:/var/lib/postgresql/data
+    options:
+      memory: 1g

@@ -1,0 +1,16 @@
+/target/
+node_modules/
+dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+/.env
+/.secrets.env
+/mise.local.toml
+/infra/.terraform/
+/infra/*.tfplan
+/infra/**/*.tfstate.backup
+/infra/**/*.tfstate.lock.info
+/infra/*.tfvars
+/infra/crash.log
+*.agekey

@@ -40,6 +40,4 @@ Commit encrypted OpenTofu state and keep its key recoverable outside Git. Serial
 
 Examples are self-contained starting points. Omit anything the target project doesn't need.
 
-| Example | Use when | Start here |
-| --- | --- | --- |
-| Rust stateful API | A Rust HTTP API needs PostgreSQL and deployment to an OVH VPS behind Cloudflare. | [Tasks](examples/rust-stateful-api/justfile), [libraries](examples/rust-stateful-api/Cargo.toml), [source](examples/rust-stateful-api/src/main.rs), [infrastructure](examples/rust-stateful-api/infra/main.tf), [host configuration](examples/rust-stateful-api/ansible/playbook.yml), [deployment](examples/rust-stateful-api/config/deploy.yml) |
+- [Multi-app monorepo](examples/multi-app-monorepo/): A Rust API and unstyled Next.js app share a repository, with a reusable client, separate Docker images and deployments, and one release version.

@@ -1,0 +1,94 @@
+name: Reconcile infrastructure
+on:
+  push:
+    branches: [main]
+    paths:
+      - infra/**
+      - ansible/**
+      - scripts/infra.sh
+      - secrets/*.enc.env
+      - mise.toml
+      - justfile
+      - .github/workflows/infrastructure.yml
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+concurrency:
+  group: shared-vps
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    name: Reconcile ${{ matrix.environment }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        environment: [staging, production]
+    environment: ${{ matrix.environment }}
+    env:
+      DEPLOY_ENV: ${{ matrix.environment }}
+      SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: jdx/mise-action@v5
+        with:
+          version: 2026.11.0
+          install_args: just opentofu python uv pipx:ansible-core sops age jq
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          : "${SSH_KNOWN_HOSTS:?Set SSH_KNOWN_HOSTS to the trusted VPS host-key entries}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          printf 'Host *\n  BatchMode yes\n  StrictHostKeyChecking yes\n' > ~/.ssh/config
+      - name: Install Ansible collections
+        run: just ansible-deps
+      - name: Apply infrastructure and configure this environment's VPS
+        id: infra
+        run: just infra
+      - name: Validate encrypted OpenTofu state
+        id: state
+        if: always() && (steps.infra.outcome == 'success' || steps.infra.outcome == 'failure' || steps.infra.outcome == 'cancelled')
+        run: |
+          state_file="infra/states/$DEPLOY_ENV.tfstate"
+          if [[ -f "$state_file" ]]; then
+            jq -e '.encrypted_data | type == "string"' "$state_file" > /dev/null
+            printf 'ready=true\n' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Preserve encrypted OpenTofu state for recovery
+        if: always() && steps.state.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: opentofu-${{ matrix.environment }}-${{ github.run_attempt }}
+          path: infra/states/${{ matrix.environment }}.tfstate
+          if-no-files-found: error
+          retention-days: 30
+      - name: Commit encrypted OpenTofu state to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: always() && steps.state.outputs.ready == 'true'
+        run: |
+          state_file="infra/states/$DEPLOY_ENV.tfstate"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$state_file"
+          if ! git diff --cached --quiet; then
+            git commit -m "Update encrypted $DEPLOY_ENV OpenTofu state"
+            git pull --rebase origin main
+            git push origin HEAD:main
+            gh workflow run ci.yml --ref main
+          fi
