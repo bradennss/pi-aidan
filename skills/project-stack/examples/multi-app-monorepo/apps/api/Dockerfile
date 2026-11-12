@@ -15,6 +15,7 @@ COPY apps/api ./apps/api
 RUN cargo build --locked --release --bin notes-api
 
 FROM debian:13-slim
+LABEL service="notes-api"
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app

@@ -3,6 +3,7 @@ dist/
 .next/
 next-env.d.ts
 pnpm-lock.yaml
+**/CHANGELOG.md
 target/
 .terraform/
 infra/**/*.tfstate*
@@ -10,5 +11,5 @@ infra/*.tfplan
 secrets/*.enc.env
 .env
 .secrets.env
-config/deploy.api.yml
-config/deploy.web.yml
+config/deploy.*.yml
+.secrets/

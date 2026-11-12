@@ -69,6 +69,7 @@ jobs:
       matrix: ${{ fromJSON(needs.release-please.outputs.images) }}
     env:
       APP: ${{ matrix.app }}
+      IMAGE: ${{ matrix.image }}
       RELEASE_VERSION: ${{ matrix.version }}
       RELEASE_COMMIT: ${{ matrix.sha }}
       REGISTRY_NAMESPACE: ${{ github.repository_owner }}
@@ -90,10 +91,10 @@ jobs:
           context: .
           file: ${{ matrix.path }}/Dockerfile
           load: true
-          tags: notes-${{ matrix.app }}:local
+          tags: ${{ matrix.image }}:local
           platforms: linux/amd64
-          cache-from: type=gha,version=2,scope=notes-${{ matrix.app }}-amd64
-          cache-to: type=gha,version=2,scope=notes-${{ matrix.app }}-amd64,mode=max
+          cache-from: type=gha,version=2,scope=${{ matrix.image }}-amd64
+          cache-to: type=gha,version=2,scope=${{ matrix.image }}-amd64,mode=max
           labels: |
             io.notes.managed=true
             org.opencontainers.image.revision=${{ env.RELEASE_COMMIT }}
@@ -107,8 +108,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish the release image
         run: |
-          image="$REGISTRY_PREFIX/notes-$APP:$RELEASE_VERSION"
-          docker tag "notes-$APP:local" "$image"
+          image="$REGISTRY_PREFIX/$IMAGE:$RELEASE_VERSION"
+          docker tag "$IMAGE:local" "$image"
           docker push "$image"
       - name: Clean up
         if: always()

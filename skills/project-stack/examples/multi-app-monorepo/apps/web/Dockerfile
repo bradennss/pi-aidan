@@ -12,6 +12,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @notes/client build && pnpm --filter @notes/web build
 
 FROM node:26.13.0-trixie-slim
+LABEL service="notes-web"
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
