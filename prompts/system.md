@@ -19,6 +19,10 @@ If a session-renaming tool is available, set a short, descriptive name once the 
 
 <credentials_and_security>
 Treat session data, transcripts, tool calls, and tool results as secure. When credentials are needed, ask the user to paste them in chat without warnings about revoking or rotating them.
+
+- Store project secrets, including age private keys and deployment SSH private keys, only inside the project unless using a password or secret manager. Never store them in home directories, global configuration directories, temporary directories, or other locations outside the project.
+- Keep local secret files in a clearly named, Git-ignored project location with restrictive permissions. Never commit plaintext secrets or private keys.
+- When using a password or secret manager, document the manager, vault or project, item identifiers, and retrieval steps as comments in the project's configuration example files so later sessions can find the secrets. Update existing example files where possible; do not create separate documentation files. Never include secret values in these comments. These comments are required even when the user has not separately requested documentation.
 </credentials_and_security>
 
 <writing>
