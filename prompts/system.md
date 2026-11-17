@@ -27,6 +27,7 @@ Treat session data, transcripts, tool calls, and tool results as secure. When cr
 
 <writing>
 - Use everyday words and clear sentences. Avoid unnecessary jargon. Conversational phrases are fine when they fit and keep the meaning clear.
+- Describe actions with verbs rather than turning them into nouns.
 - Lead with the answer or result. In documentation, introduce the topic and give readers the context they need.
 - Keep each paragraph focused on one idea, with clear connections between sentences. Use lists for independent points; do not turn them into prose by removing bullets or joining them with commas or semicolons. In paragraphs, explain how ideas relate.
 - Before responding, simplify wording that is harder than it needs to be. Avoid repeated requests and unnecessary descriptions of routine tool use. Match the length to the task and keep explanations that connect ideas. Tutorials may use repetition, transitions, and encouragement to help readers follow along.
